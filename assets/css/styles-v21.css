@@ -1,0 +1,1098 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap');
+
+:root {
+    --gold: #2D0434;
+    --dark-bg: #1a1a1a;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #f4f4f4;
+    /* padding-bottom: 90px; */
+    /* Espacio extra footer móvil */
+    overflow-x: hidden;
+}
+
+/*clase para los numeros premiado*/
+.bendecidos-numeros.premiado {
+position: relative;
+display: inline-block;
+}
+
+/* Línea 1 de la X */
+.bendecidos-numeros.premiado::before,
+.bendecidos-numeros.premiado::after {
+content: "";
+position: absolute;
+top: 50%;
+left: 50%;
+width: 80%;
+height: 3px;
+background: red;
+transform-origin: center;
+}
+
+/* Diagonal ↘ */
+.bendecidos-numeros.premiado::before {
+transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* Diagonal ↙ */
+.bendecidos-numeros.premiado::after {
+transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* HEADER */
+.promo-bar {
+    background-color: #ffbc42;
+    color: #000000;
+    font-weight: 800;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: sticky;
+    z-index: 9999;
+    overflow: hidden;
+    /* 🔥 evita que se salga */
+
+    padding: 6px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.millonario {
+    color: #ffbc42 !important;
+    /* font-size: 30px !important; */
+}
+
+.premio-mayor {
+    border: 1px solid #0f0;
+    color: white !important;
+    border-radius: 30px;
+    padding: 8px 20px;
+    cursor: pointer;
+    box-shadow: 2px 2px 4px #00ff00;
+    transition: 0.3s;
+}
+
+.hero-title {
+    text-align: center;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #333;
+    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.1);
+    line-height: 1.2;
+}
+
+.hero-title span {
+    color: var(--gold);
+}
+
+.activo {
+    display: flex;
+    justify-content: center;
+}
+
+.aprovecha {
+    text-transform: math-auto;
+}
+
+.valor-anticipado {
+    color: #ffffff;
+    background-color: #e74c3c;
+    padding: 4px 5px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+
+}
+
+.promo-track {
+    display: inline-block;
+    white-space: nowrap;
+    animation: scrollText 20s linear infinite;
+    font-style: oblique;
+}
+
+@keyframes scrollText {
+    0% {
+        transform: translateX(100%);
+    }
+
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.logo-principal img {
+    width: 150px;
+}
+
+/* CARRUSEL & PREMIOS */
+.splide__slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.prize-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s;
+    border: 1px solid #eee;
+}
+
+.prize-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--gold);
+}
+
+.prize-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFF8E1;
+    color: var(--gold);
+    border-radius: 50%;
+    margin: 0 auto 10px;
+    font-size: 1.8rem;
+}
+
+
+
+/* TUS BOTONES REVELO */
+.btn-ticket-revelo {
+    background-color: #ffffff !important;
+    border: 2px solid #1a1a1a !important;
+    color: #1a1a1a !important;
+    border-radius: 10px;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    padding: 0 !important;
+    width: 55px;
+    height: 55px;
+    transition: all 0.2s;
+}
+
+.btn-ticket-revelo:hover {
+    border-color: #b59410 !important;
+    color: #b59410 !important;
+    transform: scale(1.05);
+}
+
+.active-revelo {
+    background-color: #1a1a1a !important;
+    border-color: #d4af37 !important;
+    color: #d4af37 !important;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4) !important;
+}
+
+.metodo-pago {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+}
+
+.metodo-pago.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* FOOTER — landing (negro / blanco) */
+.site-footer {
+    background: #000;
+    color: #fff;
+    border-top: 3px solid var(--gold);
+}
+
+.site-footer-brand {
+    color: #ffffff;
+}
+
+.site-footer-heading {
+    color: #ffbc42;
+    letter-spacing: 0.04em;
+}
+
+.site-footer-text,
+.site-footer-list li {
+    color: rgba(255, 255, 255, 255);
+}
+
+.site-footer-link {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.site-footer-link:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.site-footer-list {
+    text-align: inherit;
+}
+
+.site-footer-list li {
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.site-footer-list .site-footer-link {
+    flex: 1;
+}
+
+.site-footer-icon {
+    color: #ffffff;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    font-size: 1.1rem;
+}
+
+.site-footer-cta {
+    border-radius: 999px;
+}
+
+.site-footer-pse {
+    filter: brightness(1.05);
+    opacity: 0.95;
+}
+
+.site-footer-hr {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    opacity: 1;
+}
+
+.site-footer-copy {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.site-footer-dev {
+    color: #ffbc42;
+    text-decoration: none;
+}
+
+.site-footer-dev:hover {
+    color: #ffc94d;
+    text-decoration: underline;
+}
+
+/* redes sociales */
+.notification-bubble {
+    position: absolute;
+    top: 21px;
+    right: 15px;
+    width: 15px;
+    height: 15px;
+    background-color: red;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.social-float-rail {
+    position: initial;
+}
+
+.btn-social {
+    display: block;
+    height: 160px;
+    width: 60px;
+    border-radius: 50%;
+    line-height: 80px;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    text-align: center;
+    z-index: 999;
+    background-color: transparent;
+}
+
+.btn-whatsapp {
+    bottom: 50px;
+}
+
+.btn-instagram {
+    bottom: 100px;
+}
+
+.btn-facebook {
+    bottom: 0;
+}
+
+.btn-social > a {
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    position: relative;
+}
+
+.btn-whatsapp svg {
+    height: 35px;
+    margin-left: -8px;
+}
+
+.btn-facebook img {
+    height: 35px;
+    margin-left: -8px;
+}
+
+.btn-instagram img {
+    height: 40px;
+    margin-left: -8px;
+}
+
+@media (max-width: 991.98px) {
+    /* Evita que la barra de checkout móvil tape el cierre del footer */
+    .site-footer {
+        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .site-footer .row {
+        text-align: center !important;
+    }
+
+    .site-footer-list {
+        display: inline-block;
+        text-align: left;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .site-footer .site-footer-pse {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+    }
+
+    .site-footer-copy {
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 32rem;
+        line-height: 1.5;
+    }
+}
+
+/* === CORRECCIÓN VISUAL MÓVIL (Overlap Fix) === */
+.mobile-cart-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    border-top: 1px solid #eee;
+    box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.1);
+    padding: 10px 20px;
+    z-index: 1050;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 80px;
+    /* Altura fija para evitar saltos */
+}
+
+.mobile-cart-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.1;
+}
+
+.mobile-cart-label {
+    font-size: 0.65rem;
+    color: #666;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mobile-cart-price {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #1a1a1a;
+}
+
+.mobile-cart-count {
+    font-size: 0.75rem;
+    color: #d4af37;
+    background: #222;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+/* === 1. UNIFICACIÓN DE NÚMEROS (Tickets) === */
+.ticket-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1a1a;
+    /* Fondo oscuro */
+    color: #d4af37;
+    /* Texto Dorado */
+    border: 1px solid #d4af37;
+    font-weight: 800;
+    font-family: 'Montserrat', sans-serif;
+    border-radius: 8px;
+    /* Bordes redondeados consistentes */
+    padding: 4px 10px;
+    min-width: 45px;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s;
+}
+
+.ticket-mini:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(212, 175, 55, 0.3);
+    color: #fff;
+}
+
+/* Botón de eliminar dentro del ticket */
+.ticket-mini .btn-remove {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    margin-left: 6px;
+    padding: 0;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.ticket-mini .btn-remove:hover {
+    color: #ff0000;
+}
+
+/* Forzar que el desplegable de Select2 esté por encima de todo */
+.select2-container--open {
+    z-index: 9999 !important;
+}
+
+/* Corregir el scroll en móviles */
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options {
+    max-height: 300px;
+    /* Ajusta según prefieras */
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+
+/* === 2. ARREGLO VISUAL DE SELECT2 (Formularios) === */
+
+/* Ajustar altura para que coincida con los inputs form-floating (~58px) */
+.select2-container--bootstrap-5 .select2-selection {
+    min-height: 58px !important;
+    padding-top: 22px !important;
+    /* Espacio para que el label no se monte */
+    padding-left: 10px !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: var(--bs-border-radius) !important;
+    align-items: center;
+    display: flex;
+}
+
+/* Arreglar el Z-Index para que se vea SOBRE el modal */
+.select2-container {
+    z-index: 9999 !important;
+    width: 100% !important;
+}
+
+.select2-dropdown {
+    z-index: 10000 !important;
+}
+
+.select-floating-label-group {
+    position: relative;
+    margin-bottom: 0;
+    /* Ajuste para que no quede muy separado */
+}
+
+/* Esto coloca la etiqueta "Departamento" pequeña arriba dentro de la caja */
+.select-floating-label-group label {
+    position: absolute;
+    top: 1px;
+    /* Pegado arriba */
+    left: 12px;
+    font-size: 0.75rem;
+    /* Texto pequeñito */
+    color: #999;
+    z-index: 99;
+    font-weight: 600;
+}
+
+/* Esto baja el texto "Seleccione..." para que no se monte con la etiqueta */
+.select2-container--bootstrap-5 .select2-selection {
+    padding: 10px !important;
+    /* Empujamos el texto seleccionado hacia abajo */
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+    top: 30% !important;
+    /* Centrar flecha verticalmente */
+}
+
+/* Aseguramos que el Nav esté SIEMPRE encima de todo */
+.navbar-custom {
+    background-color: #000000;
+    /* Fondo sólido (sin transparencia) para que nada se vea detrás */
+    border-bottom: 2px solid var(--gold);
+    z-index: 1050 !important;
+    /* Capa superior a la tarjeta */
+
+    /* Refuerzo */
+    /* top: -1px; */
+}
+
+.fw-black {
+    font-weight: 900;
+}
+
+.pulse-green {
+    animation: pulse-animation 2s infinite;
+}
+
+
+@keyframes pulse-animation {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Mejora para el carrusel */
+.splide__slide img {
+    border-radius: 0;
+    transition: transform 0.5s ease;
+}
+
+/* 
+.splide__slide:hover img {
+    transform: scale(1.05);
+} */
+
+img.premios-primer-sorteo {
+   /* height: 550px; */
+    width: 397px;
+    border-radius: 20px;
+    object-fit: cover;
+}
+
+li#main-carousel-slide01.premio-dos-combo img {
+    width: 480px !important;
+}
+
+.ganador-one {
+    font-size: 20px;
+    padding: 20px 0px;
+    text-align: center;
+    font-weight: 600;
+    padding: 0px;
+}
+
+p.ganador-one {
+    color: #DAB766;
+    /* Dorado Metálico */
+}
+
+.carousel-item img {
+    height: 420px !important;
+    object-fit: cover;
+    max-width: 431px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+}
+
+.carousel {
+    width: 100%;
+    max-width: 431px;
+}
+
+.carousel-inner {
+    border-radius: 20px;
+}
+
+section.texto-ganadores {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+}
+
+.container-ganadores {
+    display: flex;
+    justify-content: center;
+}
+
+h2.title-ganadores.text-center.title-premios {
+    text-align: center !important;
+    font-weight: 700;
+    padding: 30px 0px 0px;
+    ;
+}
+
+.title-premio-mayor {
+    color: #000;
+}
+
+.color-dinero-premio {
+    color: #ffbc42 !important;
+}
+
+
+h1.hero-title-dos.mb-3 {
+    padding-top: 30px;
+    font-size: 22px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* CONTENEDOR */
+.progress {
+    height: 18px;
+    border-radius: 20px;
+    background-color: #0f172a;
+    /* fondo oscuro elegante */
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    overflow: hidden;
+}
+
+/* BARRA */
+.progress-bar {
+    background: linear-gradient(90deg,
+            #00ff88,
+            #00ff00,
+            #00cc66) !important;
+
+    font-weight: bold;
+    font-size: 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #003300;
+
+    /* Glow 🔥 */
+    box-shadow:
+        0 0 8px rgba(0, 255, 0, 0.7),
+        0 0 16px rgba(0, 255, 0, 0.4);
+
+    /* Animación suave */
+    transition: width 0.8s ease-in-out;
+
+    border-radius: 20px;
+}
+
+
+@keyframes shine {
+    0% {
+        left: -40%;
+    }
+
+    100% {
+        left: 120%;
+    }
+}
+
+.paquete-card {
+
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(180deg, #ffffff, #f7f7f7);
+
+    border: 1px solid #e6e6e6;
+
+    border-radius: 14px;
+
+    padding: 22px 10px 16px 10px;
+
+    min-height: 80px;
+
+    cursor: pointer;
+
+    transition: .25s ease;
+
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .05);
+
+    /* TEXTO NEGRO */
+    color: #000 !important;
+
+}
+
+
+/* asegurar que el texto interno también sea negro */
+
+/* .paquete-card .fw-semibold,
+.paquete-card .small {
+    color: #000 !important;
+} */
+
+
+/* =========================
+HOVER
+========================= */
+
+.paquete-card:hover {
+
+    transform: translateY(-3px);
+
+    border-color: #ffbc42 !important;
+
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+
+}
+
+
+/* =========================
+SELECCIONADO
+========================= */
+
+.btn-check:checked+.paquete-card {
+
+    background: #ffbc42 !important;
+    border-color: #ffffff;
+    color: #000000 !important;
+    transform: scale(1.03);
+    box-shadow: 0 10px 24px rgba(212, 204, 204, 0.35);
+
+
+}
+
+.bendecidos-numeros {
+    background-color: #007bff;
+    color: #000;
+    padding: 5px;
+    border-radius: 8px;
+    font-weight: bold;
+    border: 2px solid #000;
+    border-style: dotted;
+    /* margin-right: 10px; */
+    display: inline-block;
+    margin-bottom: 4px;
+}
+
+
+/* =========================
+BADGE
+========================= */
+
+.badge-paquete {
+
+    position: absolute;
+
+    top: -10px;
+    right: 10px;
+
+    background: #ffffff;
+
+    color: #000;
+
+    font-size: 11px;
+
+    padding: 4px 8px;
+
+    border-radius: 7px;
+
+    font-weight: 700;
+
+    letter-spacing: .3px;
+
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+
+    white-space: nowrap;
+
+}
+
+
+/* =========================
+DESTACAR MAS VENDIDO
+========================= */
+
+.mas-vendido {
+    border: 2px solid #0f0;
+    box-shadow: #0f0 0px 0px 15px;
+}
+
+.mas-vendido:hover {
+    border: #0f0 !important;
+    box-shadow: 0 4px 12px ffbc42 !important;
+
+}
+
+.mas-vendido-cintilla {
+    background-color: #ffbc42;
+}
+
+
+/* animación suave */
+
+.mas-vendido .badge-paquete {
+
+    animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+
+    0% {
+        transform: scale(1)
+    }
+
+    50% {
+        transform: scale(1.07)
+    }
+
+    100% {
+        transform: scale(1)
+    }
+
+}
+
+
+/* =========================
+INPUT PERSONALIZADO
+========================= */
+
+.cantidad-manual {
+
+    border-radius: 10px;
+
+    border: 1px solid #e2e2e2;
+
+    padding: 10px;
+
+    font-weight: 600;
+
+    text-align: center;
+
+    transition: .2s;
+
+}
+
+.cantidad-manual:focus {
+
+    outline: none;
+    border-color: #ffbc42;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, .2);
+
+}
+
+.paquete-card:hover {
+    border: 2px solid #ffbc42 !important;
+}
+    /* Miniaturas hero: centradas */
+    #thumbnail-carousel .splide__track {
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    #thumbnail-carousel .splide__list {
+        justify-content: center;
+    }
+
+
+/* Ganadores - thumbnails debajo */
+#ganadores-thumbnails {
+    display: block;
+    width: 100%;
+}
+#ganadores-thumbnails .splide__slide {
+    width: 72px !important;
+    height: 56px !important;
+}
+#ganadores-thumbnails .splide__slide img {
+    width: 72px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    transition: border-color .2s;
+    cursor: pointer;
+}
+
+#ganadores-carousel .splide__slide img {
+    max-width: 100%;
+    max-height: 300px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 12px;
+    display: block;
+    margin: 0 auto;
+}
+.container-premios-dos,
+.container-md,
+.container-sm {
+    width: 350px;
+}
+
+.tv-premio img {
+    height: 220px;
+}
+
+#confetti-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    pointer-events: none;
+    z-index: 10;
+}
+
+.container-premio-loteria {
+    display: flex;
+    justify-content: center;
+    gap: 150px;
+}
+
+/*  */
+
+
+
+.row-days {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 0;
+    align-items: stretch;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #0f2235;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+
+.day {
+    background: #ffbc42;
+    color: #111;
+    font-weight: 900;
+    display: flex;
+    padding: 14px 12px;
+}
+
+.schedule {
+    display: grid;
+    gap: 14px;
+}
+
+.title-descrption p {
+    color: #000000;
+    font-size: 20px;
+    text-align: center;
+}
+
+.title-descrption {
+    font-weight: 600;
+}
+
+.container-section-dos {
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+}
+
+.title-info {
+    font-weight: 700;
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.title-sticker-premiados h2 {
+    width: 100%;
+    max-width: 370px;
+    font-size: 24px;
+}
+
+@media (max-width: 768px) {
+    img.premios-primer-sorteo {
+        height: auto;
+        width: 333px;
+        border-radius: 20px;
+        object-fit: cover;
+    }
+
+    li#main-carousel-slide01.premio-dos-combo img {
+        width: 390px !important;
+        height: 451px;
+    }
+
+    .carousel-item img {
+        height: 240px !important;
+    }
+
+    .container-ganadores {
+        margin: 0px 30px;
+    }
+
+    li.caballos {
+        display: flex;
+        justify-content: center;
+    }
+
+    .container-premio-loteria {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        flex-direction: column;
+    }
+
+    .container-premiados-number {
+        margin: 20px;
+    }
+    
+    .ganador-one{
+    font-size: 18px;
+    width: 300px;
+    text-align: center;
+    margin: 0 auto;
+    }
+}
+
+
+
+.lottery {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: #fff;
+    font-weight: 700;
+    width: max-content;
+    text-align: left;
+}
