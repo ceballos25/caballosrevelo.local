@@ -423,6 +423,23 @@ function inyectarEstilosMarca() {
             padding: 0.7rem 1rem;
             font-size: 0.95rem;
         }
+        .vender-sheet__status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.65rem;
+            padding: 0.55rem 0.75rem;
+            border-radius: 10px;
+            background: #ecfdf3;
+            color: #146c43;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .vender-sheet.is-processing .vender-sheet__close {
+            opacity: 0.35;
+            pointer-events: none;
+        }
 
         @media (max-width: 991.98px) {
             body.vender-mobile-bar-visible .body-wrapper-inner .container-xxl {
@@ -913,11 +930,29 @@ function abrirCheckoutVentaMobile() {
     });
 }
 
+function setCheckoutSheetProcessing(processing) {
+    const sheet = document.getElementById('venderCheckoutSheet');
+    const status = document.getElementById('venderSheetStatus');
+    const backdrop = document.getElementById('venderSheetBackdrop');
+
+    if (sheet) {
+        sheet.classList.toggle('is-processing', processing);
+    }
+    if (status) {
+        status.hidden = !processing;
+    }
+    if (backdrop) {
+        backdrop.style.pointerEvents = processing ? 'none' : '';
+    }
+}
+
 function cerrarCheckoutVentaMobile() {
     const sheet = document.getElementById('venderCheckoutSheet');
     const backdrop = document.getElementById('venderSheetBackdrop');
     if (!sheet || !backdrop) return;
+    if (sheet.classList.contains('is-processing')) return;
 
+    setCheckoutSheetProcessing(false);
     sheet.classList.remove('is-open');
     backdrop.classList.remove('is-open');
     sheet.setAttribute('aria-hidden', 'true');
@@ -999,10 +1034,9 @@ async function confirmarVentaDesdeSheet() {
         return;
     }
 
-    cerrarCheckoutVentaMobile();
-
     const total = calcularTotalVenta(estado.cantidadSeleccionada);
 
+    setCheckoutSheetProcessing(true);
     await ejecutarVentaRegistro({
         btnD,
         btnM,
@@ -1070,13 +1104,14 @@ function buildVentaConfirmHtml(cliente, total, metodo, cantidad) {
 }
 
 function resetBotonesVenta(btnD, btnM) {
+    setCheckoutSheetProcessing(false);
     if (btnD) {
         btnD.disabled = false;
         btnD.innerHTML = 'CONFIRMAR VENTA';
     }
     if (btnM) {
         btnM.disabled = false;
-        btnM.innerHTML = 'CONFIRMAR VENTA <i class="ti ti-check ms-1"></i>';
+        btnM.innerHTML = 'CONFIRMAR VENTA';
     }
 }
 
@@ -1215,6 +1250,7 @@ async function generarReciboFinal(idVenta) {
         const json = await parseAjaxJson(res);
 
         if (json.success) {
+            setCheckoutSheetProcessing(false);
             cerrarCheckoutVentaMobile();
             const bar = document.getElementById('venderMobileBar');
             if (bar) bar.classList.remove('is-visible');
@@ -1231,6 +1267,7 @@ async function generarReciboFinal(idVenta) {
 
             window.scrollTo(0, 0);
         } else {
+            setCheckoutSheetProcessing(false);
             notifyErrorModal(
                 'Recibo no disponible',
                 extractApiMessage(json, 'La venta se registró pero no se pudo cargar el recibo.')
@@ -1239,6 +1276,7 @@ async function generarReciboFinal(idVenta) {
         }
 
     } catch (e) {
+        setCheckoutSheetProcessing(false);
         notifyErrorModal(
             'Error al cargar el recibo',
             e instanceof Error ? e.message : 'No se pudo mostrar el comprobante de venta.'

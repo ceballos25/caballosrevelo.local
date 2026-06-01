@@ -202,6 +202,10 @@ include_once ROOT_PATH . "/includes/head.php";
         </div>
     </div>
     <div class="vender-sheet__footer">
+        <div class="vender-sheet__status" id="venderSheetStatus" hidden role="status" aria-live="polite">
+            <span class="spinner-border spinner-border-sm text-success" aria-hidden="true"></span>
+            <span>Registrando venta, espera un momento…</span>
+        </div>
         <input type="radio" class="btn-check d-none" checked name="metodoPagoMobile" id="pagoEfecMob" value="Venta Manual">
         <button type="button" class="btn btn-success w-100 fw-bold rounded-pill vender-sheet__confirm" id="btnCompletarVentaMobile" onclick="confirmarVentaDesdeSheet()">
             CONFIRMAR VENTA
@@ -230,7 +234,7 @@ $extra_js = '
 <script src="' . ASSETS_URL . '/libs/select2/js/select2.min.js"></script>
 <script src="' . ASSETS_URL . '/js/departamentos-ciudades.js"></script>
 <script src="' . ASSETS_URL . '/js/cr-grilla-numeros.js?v=2"></script>
-<script src="' . ASSETS_URL . '/js/vender.js?v=18"></script>
+<script src="' . ASSETS_URL . '/js/vender.js?v=19"></script>
 ';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>
