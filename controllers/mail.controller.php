@@ -39,10 +39,26 @@ class MailController {
             $mail->Timeout = 8;
             $mail->SMTPKeepAlive = false;
 
-            if (SMTP_ENCRYPTION === 'ssl') {
+            $encryption = strtolower(trim((string)SMTP_ENCRYPTION));
+            if ($encryption === 'ssl') {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            } else {
+            } elseif ($encryption === 'tls') {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            } else {
+                $mail->SMTPAutoTLS = false;
+                $mail->SMTPSecure = '';
+            }
+
+            // cPanel: localhost presenta cert del host (host11...), no "localhost".
+            $smtpHost = strtolower(trim((string)SMTP_HOST));
+            if (in_array($smtpHost, ['localhost', '127.0.0.1'], true)) {
+                $mail->SMTPOptions = [
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true,
+                    ],
+                ];
             }
 
             // Correo
