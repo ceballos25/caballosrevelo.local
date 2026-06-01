@@ -224,6 +224,9 @@ class PaymentBackupsController
         Db::update(
             self::TABLE_BACKUP,
             [
+                // Evita que el cron de expiración (status=1) expire este backup
+                // mientras el webhook está procesando/reintentando la creación de venta.
+                'status_payment_backup' => 2,
                 'openpay_status_payment_backup' => self::openpayStatusAlAprobar($txStatus),
                 'openpay_response_payment_backup' => json_encode($tx, JSON_UNESCAPED_UNICODE),
             ],
