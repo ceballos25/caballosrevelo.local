@@ -32,7 +32,17 @@ class NumerosController
 
         $data = Db::fetchAll($sql, $params);
 
-        if ($data !== []) {
+        $grilla = !empty($_POST['grilla']);
+        if ($grilla && $data !== []) {
+            usort($data, static function ($a, $b) {
+                $na = (int)($a->number_ticket ?? 0);
+                $nb = (int)($b->number_ticket ?? 0);
+                if ($na !== $nb) {
+                    return $na <=> $nb;
+                }
+                return strcmp((string)($a->number_ticket ?? ''), (string)($b->number_ticket ?? ''));
+            });
+        } elseif ($data !== []) {
             shuffle($data);
         }
 
@@ -42,7 +52,27 @@ class NumerosController
         );
         $priceRaffle = $priceRow ? (float)($priceRow->price_raffle ?? 0) : 0.0;
 
-        return ['success' => true, 'data' => $data, 'price_raffle' => $priceRaffle];
+        $result = ['success' => true, 'data' => $data, 'price_raffle' => $priceRaffle];
+
+        if ($grilla) {
+            $stats = ['disponibles' => 0, 'reservados' => 0, 'vendidos' => 0, 'total' => count($data)];
+            foreach ($data as $row) {
+                switch ((int)($row->status_ticket ?? -1)) {
+                    case 0:
+                        $stats['disponibles']++;
+                        break;
+                    case 2:
+                        $stats['reservados']++;
+                        break;
+                    case 1:
+                        $stats['vendidos']++;
+                        break;
+                }
+            }
+            $result['stats'] = $stats;
+        }
+
+        return $result;
     }
 
     public static function cambiarEstado()

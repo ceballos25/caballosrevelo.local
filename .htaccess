@@ -13,6 +13,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Favicon en raíz (petición automática del navegador)
+    RewriteRule ^favicon\.ico$ favicon.php [L]
+
     # .env en raíz o subcarpetas
     RewriteRule (?:^|/)\.env - [F,L,NC]
 

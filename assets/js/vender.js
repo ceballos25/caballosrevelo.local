@@ -1,36 +1,194 @@
-/**
- * vender.js - Gestión de Ventas Caballos Revelo
- * Refactorización Pro: Búsqueda Inteligente, Limpieza de Datos y Soporte Multi-dispositivo.
- * NUEVA LÓGICA: selección por cantidad de números.
- */
-
-// --- 1. ESTADO GLOBAL ---
 const estado = {
     rifa: null,
+    pricing: window.VENDER_PRICING || null,
     cantidadSeleccionada: 0,
+    numerosSeleccionados: [],
+    inventarioCompleto: [],
+    statsInventario: null,
+    disponiblesCount: 0,
     paginaActual: 1,
     itemsPorPagina: 40,
     config: {
         rutas: {
             clientes: '/front/ajax/clientes.ajax.php',
             rifas: '/front/ajax/rifas.ajax.php',
-            ventas: '/front/ajax/ventas.ajax.php'
+            ventas: '/front/ajax/ventas.ajax.php',
+            numeros: '/front/ajax/numeros.ajax.php',
         }
     }
 };
 
-/** Evita que avisos PHP (antes del JSON) rompan silenciosamente res.json(). */
+function parsePrecioRifaValue(value) {
+    if (typeof parsePrecioCOP === 'function') return parsePrecioCOP(value);
+    if (typeof adminParseCOP === 'function') return adminParseCOP(value);
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.round(n) : 0;
+}
+
+function isPricingTierEnabled(value) {
+    if (value === true || value === 1) return true;
+    if (value === false || value === 0 || value == null) return false;
+    const v = String(value).trim().toLowerCase();
+    return !['0', 'false', 'no', 'off', ''].includes(v);
+}
+
+function readPricingInt(value, fallback) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function pricingTierConfigVenta() {
+    const p = estado.pricing;
+    if (!p || !isPricingTierEnabled(p.enabled)) {
+        return { enabled: false, firstUnit: 0, secondUnit: 0, thirdPlusUnit: 0 };
+    }
+    return {
+        enabled: true,
+        firstUnit: readPricingInt(p.first_unit, 65000),
+        secondUnit: readPricingInt(p.second_unit ?? p.tier1_unit, 60000),
+        thirdPlusUnit: readPricingInt(p.third_plus_unit ?? p.tier2_unit, 55000),
+    };
+}
+
+function calcularDesglosePrecioVenta(cantidad) {
+    const qty = Math.max(0, parseInt(cantidad, 10) || 0);
+    const tier = pricingTierConfigVenta();
+    const unit = parsePrecioRifaValue(estado.rifa?.precio || 0);
+
+    if (!tier.enabled || qty <= 0) {
+        return {
+            total: unit > 0 ? Math.round(qty * unit) : 0,
+            promoActive: false,
+        };
+    }
+
+    if (qty === 1) {
+        return { total: tier.firstUnit, promoActive: false };
+    }
+
+    if (qty === 2) {
+        return { total: tier.secondUnit * 2, promoActive: true };
+    }
+
+    return { total: Math.round(tier.thirdPlusUnit * qty), promoActive: true };
+}
+
+function calcularTotalVenta(cantidad) {
+    return calcularDesglosePrecioVenta(cantidad).total;
+}
+
+function aplicarPrecioServidor(raw) {
+    const p = parsePrecioRifaValue(raw);
+    if (p > 0 && estado.rifa) {
+        estado.rifa.precio = p;
+    }
+}
+
+function minCantidadVenta() {
+    return Math.max(1, Number(estado.rifa?.minCantidad) || 1);
+}
+
+function mensajeCompraMinimaVenta() {
+    const min = minCantidadVenta();
+    return `La compra mínima es de ${min} sticker${min > 1 ? 's' : ''}.`;
+}
+
+function extractApiMessage(json, fallback = 'La operación no se completó.') {
+    if (json && typeof json.message === 'string' && json.message.trim()) {
+        return json.message.trim();
+    }
+    return fallback;
+}
+
+function venderEscapeHtml(s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function notifySuccess(mensaje) {
+    const msg = String(mensaje || 'Operación exitosa').trim();
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: msg,
+            timer: 2200,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+        });
+        return;
+    }
+    if (typeof alertify !== 'undefined') {
+        alertify.success(msg, 5);
+        return;
+    }
+    alert(msg);
+}
+
+function notifyError(mensaje, titulo = 'Error') {
+    const msg = String(mensaje || 'Ocurrió un error inesperado').trim() || 'Ocurrió un error inesperado';
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({ icon: 'error', title: titulo, text: msg, confirmButtonText: 'Entendido' });
+        return;
+    }
+    if (typeof alertify !== 'undefined') {
+        alertify.error(msg, 10);
+        return;
+    }
+    alert(`${titulo}: ${msg}`);
+}
+
+function notifyWarning(mensaje) {
+    const msg = String(mensaje || '').trim();
+    if (!msg) return;
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({ icon: 'warning', title: 'Aviso', text: msg, confirmButtonText: 'Entendido' });
+        return;
+    }
+    if (typeof alertify !== 'undefined') {
+        alertify.warning(msg, 8);
+        return;
+    }
+    alert(msg);
+}
+
+function notifyErrorModal(titulo, mensaje) {
+    const msg = String(mensaje || 'Ocurrió un error inesperado').trim() || 'Ocurrió un error inesperado';
+    const title = String(titulo || 'Error').trim();
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'error',
+            title,
+            text: msg,
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#212529',
+        });
+        return;
+    }
+    if (typeof alertify !== 'undefined') {
+        alertify.alert(title, msg);
+        return;
+    }
+    alert(`${title}\n\n${msg}`);
+}
+
 async function parseAjaxJson(res) {
     const text = await res.text();
     try {
         return JSON.parse(text.trim());
     } catch (e) {
-        console.error('Respuesta no JSON (HTTP ' + res.status + '):', text.slice(0, 1500));
-        throw e;
+        const preview = text.slice(0, 200).replace(/\s+/g, ' ').trim();
+        const msg = res.ok
+            ? 'Respuesta inválida del servidor. Recarga la página e intenta de nuevo.'
+            : `Error del servidor (HTTP ${res.status})${preview ? `: ${preview}` : '.'}`;
+        notifyError(msg, 'Error de comunicación');
+        throw new Error(msg);
     }
 }
 
-// --- 2. INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', () => {
     inyectarEstilosMarca();
     initComponentes();
@@ -67,12 +225,216 @@ function inyectarEstilosMarca() {
             50%{transform:scale(1.15);box-shadow:0 0 10px #d4af37;}
             100%{transform:scale(1);}
         }
+
+        .vender-confirm-summary { font-size: 0.88rem; }
+        .vender-confirm-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.65rem;
+            padding: 0.2rem 0;
+        }
+        .vender-confirm-row > span:last-child {
+            text-align: right;
+            max-width: 62%;
+        }
+        .vender-confirm-row--numbers {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.3rem;
+        }
+        .vender-confirm-row--numbers > span:first-child {
+            text-align: left;
+        }
+        .vender-confirm-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            justify-content: flex-start;
+        }
+        .vender-confirm-total { text-align: center; }
+        .swal2-popup.vender-confirm-popup { border-radius: 14px; padding: 1rem 1rem 0.85rem; }
+        .swal2-popup.vender-confirm-popup .swal2-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            padding-bottom: 0;
+        }
+        .swal2-popup.vender-confirm-popup .swal2-html-container { margin: 0.5rem 0 0; }
+        .swal2-popup.vender-confirm-popup .swal2-actions { margin-top: 0.75rem; }
+
+        
+        .vender-mobile-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px));
+            background: #fff;
+            border-top: 1px solid #e9ecef;
+            box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.08);
+            transform: translateY(110%);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.28s ease, opacity 0.28s ease;
+        }
+        .vender-mobile-bar.is-visible {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .vender-mobile-bar__label {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #6c757d;
+            line-height: 1.1;
+        }
+        .vender-mobile-bar__price {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #198754;
+            line-height: 1.15;
+        }
+        .vender-mobile-bar__qty {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #495057;
+            background: #f1f3f5;
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+        .vender-mobile-bar__btn {
+            flex-shrink: 0;
+            padding: 0.5rem 1.1rem;
+            font-size: 0.85rem;
+        }
+
+        
+        .vender-sheet-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1045;
+            background: rgba(0, 0, 0, 0.45);
+            opacity: 0;
+            transition: opacity 0.28s ease;
+            pointer-events: none;
+        }
+        .vender-sheet-backdrop.is-open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .vender-sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1050;
+            max-height: min(72vh, 520px);
+            background: #fff;
+            border-radius: 18px 18px 0 0;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.16);
+            transform: translateY(105%);
+            transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+            display: flex;
+            flex-direction: column;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .vender-sheet.is-open { transform: translateY(0); }
+        .vender-sheet__handle {
+            width: 40px;
+            height: 4px;
+            margin: 10px auto 0;
+            border-radius: 999px;
+            background: #dee2e6;
+        }
+        .vender-sheet__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px 8px;
+        }
+        .vender-sheet__close {
+            font-size: 1.5rem;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .vender-sheet__body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 16px 12px;
+        }
+        .vender-sheet__row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .vender-sheet__numbers {
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .vender-sheet__auto-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #495057;
+            background: #f8f9fa;
+            border: 1px dashed #ced4da;
+            border-radius: 10px;
+            padding: 8px 12px;
+        }
+        .vender-sheet__total {
+            text-align: center;
+            padding: 14px 0 4px;
+        }
+        .vender-sheet__total-value {
+            display: block;
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #198754;
+            line-height: 1.2;
+        }
+        .vender-sheet__footer {
+            padding: 10px 16px 14px;
+            border-top: 1px solid #e9ecef;
+            background: #fff;
+        }
+        @media (max-width: 991.98px) {
+            .vender-numeros-card .cr-grilla-panel {
+                border-radius: 0 0 16px 16px;
+                box-shadow: none;
+            }
+            .vender-numeros-card .cr-grilla-numeros--grid {
+                max-height: min(58vh, 460px);
+            }
+        }
+        .vender-sheet__confirm {
+            padding: 0.7rem 1rem;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 991.98px) {
+            body.vender-mobile-bar-visible .body-wrapper-inner .container-xxl {
+                padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+            body.vender-sheet-open { overflow: hidden; }
+        }
     </style>`;
 
     document.head.insertAdjacentHTML('beforeend', css);
 }
 
-// --- 3. EVENTOS ---
 function asignarEventos() {
 
     $('#selectRifa').on('change', cambiarRifa);
@@ -102,7 +464,6 @@ function asignarEventos() {
     });
 }
 
-// --- CLIENTES ---
 async function buscarClientePorCelular(numero) {
 
     const fd = new FormData();
@@ -118,7 +479,7 @@ async function buscarClientePorCelular(numero) {
             body: fd
         });
 
-        const json = await res.json();
+        const json = await parseAjaxJson(res);
 
         if (json.success && json.data && json.data.length > 0) {
 
@@ -131,12 +492,10 @@ async function buscarClientePorCelular(numero) {
         }
 
     } catch (e) {
-
-        console.error("Error buscando cliente:", e);
+        notifyWarning('No se pudo buscar el cliente automáticamente. Puedes llenar los datos manualmente.');
     }
 }
 
-// --- COMPONENTES ---
 function initComponentes() {
 
     $('#buscadorCliente').select2({
@@ -200,7 +559,6 @@ function initComponentes() {
     }
 }
 
-// --- RIFAS ---
 async function cargarRifasActivas() {
 
     const fd = new FormData();
@@ -213,66 +571,216 @@ async function cargarRifasActivas() {
             body: fd
         });
 
-        const json = await res.json();
+        const json = await parseAjaxJson(res);
 
-        if (json.success && json.data.length > 0) {
+        if (!json.success) {
+            notifyError(extractApiMessage(json, 'No se pudieron cargar las rifas activas.'), 'Rifas');
+            return;
+        }
+
+        if (!json.data || json.data.length === 0) {
+            notifyWarning('No hay rifas activas disponibles para vender.');
+            return;
+        }
+
+        if (json.data.length > 0) {
 
             const select = document.getElementById('selectRifa');
 
-            // limpiar opciones por seguridad
             select.innerHTML = '';
 
             json.data.forEach((r, index) => {
 
                 const opt = new Option(r.title_raffle, r.id_raffle);
                 opt.dataset.precio = r.price_raffle;
+                opt.dataset.tipo = r.type_raffle || 'automatic';
+                opt.dataset.minCantidad = r.min_quantity_raffle ?? 1;
 
                 select.add(opt);
 
-                // seleccionar la primera automáticamente
                 if (index === 0) {
-
-                    estado.rifa = {
-                        id: r.id_raffle,
-                        precio: parseFloat(r.price_raffle || 0)
-                    };
-
+                    select.value = String(r.id_raffle);
+                    syncRifaDesdeSelect();
                 }
 
             });
 
+            aplicarModoVenta();
         }
 
     } catch (e) {
-
-        console.error("Error rifas:", e);
-
+        notifyError(
+            e instanceof Error ? e.message : 'No se pudieron cargar las rifas activas.',
+            'Rifas'
+        );
     }
 
 }
 
-function cambiarRifa() {
-
-    const idRifa = $('#selectRifa').val();
-
-    if (!idRifa) return;
-
-    const opt = document.getElementById('selectRifa').selectedOptions[0];
-
+function syncRifaDesdeSelect() {
+    const select = document.getElementById('selectRifa');
+    if (!select || !select.value) return;
+    const opt = select.selectedOptions[0];
     estado.rifa = {
-        id: idRifa,
-        precio: parseFloat(opt.dataset.precio || 0)
+        id: select.value,
+        precio: parsePrecioRifaValue(opt?.dataset.precio || 0),
+        type: opt?.dataset.tipo || 'automatic',
+        minCantidad: Math.max(1, parseInt(opt?.dataset.minCantidad, 10) || 1),
     };
+}
+
+function esRifaManual() {
+    return String(estado.rifa?.type || 'automatic') === 'manual';
+}
+
+function cambiarRifa() {
+    syncRifaDesdeSelect();
+    aplicarModoVenta();
+}
+
+async function aplicarModoVenta() {
+    const manual = esRifaManual();
+    const bloquePaquetes = document.getElementById('bloquePaquetesVenta');
+    const manualBox = document.getElementById('selectorManualVenta');
+
+    if (bloquePaquetes) bloquePaquetes.classList.toggle('d-none', manual);
+    if (manualBox) manualBox.classList.toggle('d-none', !manual);
+
+    estado.numerosSeleccionados = [];
+    estado.cantidadSeleccionada = 0;
+    document.querySelectorAll('.paquete-radio').forEach(r => { r.checked = false; });
+    $('#cantidadManual').hide().val('');
+    const np = document.getElementById('numeroPremiado');
+    if (np) np.value = '';
+
+    if (manual) {
+        await cargarInventarioVenta();
+        initGrillaVenta();
+        renderGridNumerosVenta();
+    } else {
+        estado.inventarioCompleto = [];
+        estado.statsInventario = null;
+        estado.disponiblesCount = 0;
+        await refrescarPrecioRifaActiva();
+    }
 
     actualizarCarritoUI();
 }
 
-// --- RESUMEN ---
+async function refrescarPrecioRifaActiva() {
+    if (!estado.rifa?.id) return;
+    const fd = new FormData();
+    fd.append('action', 'obtener_disponibles');
+    fd.append('id_raffle', estado.rifa.id);
+    try {
+        const res = await fetch(estado.config.rutas.ventas, { method: 'POST', body: fd });
+        const json = await parseAjaxJson(res);
+        if (json.success) {
+            aplicarPrecioServidor(json.price_raffle);
+        }
+    } catch (_) {
+        
+    }
+}
+
+async function cargarInventarioVenta() {
+    if (!estado.rifa?.id) return;
+    const fd = new FormData();
+    fd.append('action', 'obtener_inventario');
+    fd.append('id_raffle', estado.rifa.id);
+    fd.append('grilla', '1');
+    try {
+        const res = await fetch(estado.config.rutas.numeros, { method: 'POST', body: fd });
+        const json = await parseAjaxJson(res);
+        if (json.success) {
+            estado.inventarioCompleto = json.data || [];
+            estado.statsInventario = json.stats || null;
+            aplicarPrecioServidor(json.price_raffle);
+            estado.disponiblesCount = json.stats?.disponibles
+                ?? (typeof CrGrillaNumeros !== 'undefined'
+                    ? CrGrillaNumeros.contarDisponibles(estado.inventarioCompleto)
+                    : estado.inventarioCompleto.filter(t => Number(t.status_ticket) === 0).length);
+            if (typeof CrGrillaNumeros !== 'undefined') {
+                CrGrillaNumeros.resetUi(VENDER_GRILLA.gridId);
+            }
+            const search = document.getElementById(VENDER_GRILLA.searchId);
+            if (search) search.value = '';
+        } else {
+            estado.inventarioCompleto = [];
+            estado.statsInventario = null;
+            estado.disponiblesCount = 0;
+            notifyError(extractApiMessage(json, 'No se pudo cargar el inventario de números.'), 'Inventario');
+        }
+    } catch (e) {
+        estado.inventarioCompleto = [];
+        estado.statsInventario = null;
+        estado.disponiblesCount = 0;
+        notifyError(
+            e instanceof Error ? e.message : 'No se pudo cargar el inventario de números.',
+            'Inventario'
+        );
+    }
+}
+
+const VENDER_GRILLA = {
+    gridId: 'gridNumerosVenta',
+    pagerId: 'gridNumerosVentaPager',
+    statsId: 'gridNumerosVentaStats',
+    countId: 'manualVentaSeleccionCount',
+    searchId: 'buscarNumeroVenta',
+};
+
+let grillaVentaInicializada = false;
+
+function initGrillaVenta() {
+    if (grillaVentaInicializada || typeof CrGrillaNumeros === 'undefined') return;
+    CrGrillaNumeros.bindSearch(VENDER_GRILLA.searchId, VENDER_GRILLA.gridId, renderGridNumerosVenta);
+    grillaVentaInicializada = true;
+}
+
+function renderGridNumerosVenta() {
+    if (typeof CrGrillaNumeros === 'undefined') return;
+    CrGrillaNumeros.render({
+        ...VENDER_GRILLA,
+        items: estado.inventarioCompleto,
+        selectedIds: estado.numerosSeleccionados,
+        serverStats: estado.statsInventario,
+        onToggleName: 'toggleNumeroVenta',
+        rerender: renderGridNumerosVenta,
+        emptyMessage: 'No hay números cargados para esta rifa.',
+    });
+}
+
+window.toggleNumeroVenta = function (idTicket) {
+    const id = parseInt(idTicket, 10);
+    const ticket = estado.inventarioCompleto.find(t => parseInt(t.id_ticket, 10) === id);
+    if (ticket && typeof CrGrillaNumeros !== 'undefined' && !CrGrillaNumeros.isDisponible(ticket)) {
+        notifyWarning('Este número no está disponible (vendido o reservado).');
+        return;
+    }
+    const idx = estado.numerosSeleccionados.indexOf(id);
+    if (idx >= 0) {
+        estado.numerosSeleccionados.splice(idx, 1);
+    } else {
+        estado.numerosSeleccionados.push(id);
+    }
+    estado.cantidadSeleccionada = estado.numerosSeleccionados.length;
+    renderGridNumerosVenta();
+    actualizarCarritoUI();
+};
+
+window.filtrarNumerosVenta = function () {
+    if (typeof CrGrillaNumeros !== 'undefined') {
+        CrGrillaNumeros.resetPage(VENDER_GRILLA.gridId);
+    }
+    renderGridNumerosVenta();
+};
+
 function actualizarCarritoUI() {
 
     const cantidad = estado.cantidadSeleccionada;
 
-    const total = cantidad * (estado.rifa?.precio || 0);
+    const total = calcularTotalVenta(cantidad);
 
     const fmt = n => new Intl.NumberFormat('es-CO', {
         style: 'currency',
@@ -281,20 +789,386 @@ function actualizarCarritoUI() {
     }).format(n);
 
     $('#lblTotalDesktop, #lblTotalMobile').text(fmt(total));
+    $('#lblCantidadMobile, #lblCantidadDesktop').text(cantidad);
 
-    $('#lblCantidadMobileBadge, #lblCantidadDesktop').text(cantidad);
+    const sheetCant = document.getElementById('sheetCantidad');
+    const sheetTotal = document.getElementById('sheetTotal');
+    if (sheetCant) {
+        sheetCant.textContent = `${cantidad} número${cantidad !== 1 ? 's' : ''}`;
+    }
+    if (sheetTotal) {
+        sheetTotal.textContent = fmt(total);
+    }
+    renderSheetNumeros();
 
-    const listaHtml = cantidad === 0
-        ? '<li class="list-group-item text-center text-muted py-4 border-0 small">Selecciona cantidad de números</li>'
-        : `<li class="list-group-item d-flex justify-content-between align-items-center px-0 border-light">
+    actualizarBarraMobile(cantidad);
+
+    let listaHtml;
+    if (cantidad === 0) {
+        listaHtml = '<li class="list-group-item text-center text-muted py-4 border-0 small">'
+            + (esRifaManual() ? 'Selecciona los números en la grilla' : 'Selecciona cantidad de números')
+            + '</li>';
+    } else if (esRifaManual() && estado.numerosSeleccionados.length) {
+        const nums = estado.inventarioCompleto
+            .filter(t => estado.numerosSeleccionados.includes(parseInt(t.id_ticket, 10)))
+            .map(t => t.number_ticket)
+            .join(', ');
+        listaHtml = `<li class="list-group-item px-0 border-light">
+            <span class="badge bg-dark rounded-pill mb-2">${cantidad} números</span>
+            <div class="small text-break">${nums || '—'}</div>
+            <div class="fw-bold small text-primary mt-2">${fmt(total)}</div>
+        </li>`;
+    } else {
+        listaHtml = `<li class="list-group-item d-flex justify-content-between align-items-center px-0 border-light">
             <span class="badge bg-dark rounded-pill">${cantidad} números</span>
             <span class="fw-bold small text-primary">${fmt(total)}</span>
         </li>`;
+    }
 
-    $('#listaCarritoDesktop, #listaCarritoMobile').html(listaHtml);
+    $('#listaCarritoDesktop').html(listaHtml);
 }
 
-// --- PROCESAR VENTA ---
+function obtenerNumerosVentaSeleccionados() {
+    if (!esRifaManual() || !estado.numerosSeleccionados.length) {
+        return [];
+    }
+    return estado.inventarioCompleto
+        .filter(t => estado.numerosSeleccionados.includes(parseInt(t.id_ticket, 10)))
+        .map(t => String(t.number_ticket));
+}
+
+function renderSheetNumeros() {
+    const el = document.getElementById('sheetNumeros');
+    if (!el) return;
+
+    const nums = obtenerNumerosVentaSeleccionados();
+    if (esRifaManual() && nums.length) {
+        el.innerHTML = `
+            <span class="text-muted small d-block mb-2">Números seleccionados</span>
+            <div class="d-flex flex-wrap gap-1">${nums.map(n =>
+                crNumeroChipHtml(n, 'selected')
+            ).join('')}</div>`;
+        return;
+    }
+
+    el.innerHTML = `
+        <span class="text-muted small d-block mb-2">Números</span>
+        <span class="vender-sheet__auto-badge">
+            <i class="ti ti-shuffle"></i> Asignación automática al confirmar
+        </span>`;
+}
+
+function actualizarBarraMobile(cantidad) {
+    const bar = document.getElementById('venderMobileBar');
+    const btn = document.getElementById('btnAbrirCheckoutMobile');
+    const visible = cantidad > 0;
+
+    if (bar) {
+        bar.classList.toggle('is-visible', visible);
+        bar.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+
+    if (btn) {
+        const min = minCantidadVenta();
+        btn.disabled = cantidad < min;
+        btn.textContent = cantidad >= min
+            ? 'Continuar'
+            : (min > 1 ? `Mín. ${min} nums` : 'Elige cantidad');
+    }
+
+    document.body.classList.toggle('vender-mobile-bar-visible', visible && window.matchMedia('(max-width: 991.98px)').matches);
+}
+
+function abrirCheckoutVentaMobile() {
+    if (!estado.rifa?.id) {
+        notifyError('No hay sorteo seleccionado.', 'Venta');
+        return;
+    }
+
+    if (esRifaManual()) {
+        if (estado.numerosSeleccionados.length <= 0) {
+            notifyError('Selecciona al menos un número en la grilla.', 'Venta');
+            return;
+        }
+        estado.cantidadSeleccionada = estado.numerosSeleccionados.length;
+    }
+
+    if (estado.cantidadSeleccionada < minCantidadVenta()) {
+        notifyError(mensajeCompraMinimaVenta(), 'Venta');
+        return;
+    }
+
+    actualizarCarritoUI();
+
+    const sheet = document.getElementById('venderCheckoutSheet');
+    const backdrop = document.getElementById('venderSheetBackdrop');
+    if (!sheet || !backdrop) return;
+
+    backdrop.hidden = false;
+    requestAnimationFrame(() => {
+        backdrop.classList.add('is-open');
+        sheet.classList.add('is-open');
+        sheet.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('vender-sheet-open');
+    });
+}
+
+function cerrarCheckoutVentaMobile() {
+    const sheet = document.getElementById('venderCheckoutSheet');
+    const backdrop = document.getElementById('venderSheetBackdrop');
+    if (!sheet || !backdrop) return;
+
+    sheet.classList.remove('is-open');
+    backdrop.classList.remove('is-open');
+    sheet.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('vender-sheet-open');
+
+    setTimeout(() => {
+        if (!sheet.classList.contains('is-open')) {
+            backdrop.hidden = true;
+        }
+    }, 320);
+}
+
+function obtenerDatosFormularioVenta() {
+    return {
+        cliente: {
+            id: $('#idCliente').val(),
+            nombre: $('#nombreCliente').val().trim(),
+            apellido: $('#apellidoCliente').val().trim(),
+            celular: $('#celularCliente').val().trim(),
+            email: $('#emailCliente').val().trim(),
+            depto: $('#departamento').val(),
+            ciudad: $('#ciudad').val(),
+        },
+        metodo:
+            $('input[name="metodoPago"]:checked').val()
+            || $('input[name="metodoPagoMobile"]:checked').val(),
+        numeroForzado: ($('#numeroPremiado').val() ?? '').trim(),
+    };
+}
+
+function validarDatosVenta(form) {
+    if (!estado.rifa?.id) {
+        return 'No hay sorteo seleccionado.';
+    }
+
+    if (esRifaManual()) {
+        if (estado.numerosSeleccionados.length <= 0) {
+            return 'Selecciona al menos un número en la grilla.';
+        }
+        estado.cantidadSeleccionada = estado.numerosSeleccionados.length;
+    }
+
+    if (estado.cantidadSeleccionada <= 0) {
+        return 'Debes indicar la cantidad de números.';
+    }
+
+    if (estado.cantidadSeleccionada < minCantidadVenta()) {
+        return mensajeCompraMinimaVenta();
+    }
+
+    const { cliente, metodo, numeroForzado } = form;
+
+    if (!cliente.nombre || !cliente.apellido || !cliente.celular || !cliente.email || !cliente.depto || !cliente.ciudad) {
+        return 'Todos los campos obligatorios (*) deben estar llenos.';
+    }
+
+    if (!metodo) {
+        return 'Debes seleccionar un método de pago.';
+    }
+
+    if (esRifaManual() && numeroForzado) {
+        return 'En rifa manual elige los números en la grilla.';
+    }
+
+    return null;
+}
+
+async function confirmarVentaDesdeSheet() {
+    const btnD = document.getElementById('btnCompletarVenta');
+    const btnM = document.getElementById('btnCompletarVentaMobile');
+    const spinnerHtml = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+
+    if ((btnD && btnD.disabled) || (btnM && btnM.disabled)) return;
+
+    const form = obtenerDatosFormularioVenta();
+    const error = validarDatosVenta(form);
+    if (error) {
+        notifyError(error, 'Venta');
+        return;
+    }
+
+    cerrarCheckoutVentaMobile();
+
+    const total = calcularTotalVenta(estado.cantidadSeleccionada);
+
+    await ejecutarVentaRegistro({
+        btnD,
+        btnM,
+        spinnerHtml,
+        cliente: form.cliente,
+        metodo: form.metodo,
+        total,
+        numeroForzado: form.numeroForzado,
+    });
+}
+
+function venderFormatMoney(n) {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 0,
+    }).format(n);
+}
+
+function buildVentaConfirmHtml(cliente, total, metodo, cantidad) {
+    const esc = venderEscapeHtml;
+    const nombre = `${cliente.nombre} ${cliente.apellido}`.trim();
+    const rifaTitle = document.getElementById('selectRifa')?.selectedOptions[0]?.text || '';
+
+    let numerosHtml = '';
+    const nums = obtenerNumerosVentaSeleccionados();
+    if (esRifaManual() && nums.length) {
+        const maxChips = 12;
+        const chips = nums.slice(0, maxChips).map(n => crNumeroChipHtml(n, 'selected')).join('');
+        const extra = nums.length > maxChips
+            ? `<span class="text-muted small align-self-center">+${nums.length - maxChips} más</span>`
+            : '';
+        numerosHtml = `
+        <div class="vender-confirm-row vender-confirm-row--numbers">
+            <span class="text-muted">Números</span>
+            <div class="vender-confirm-chips">${chips}${extra}</div>
+        </div>`;
+    }
+
+    return `
+    <div class="vender-confirm-summary">
+        <div class="vender-confirm-row">
+            <span class="text-muted">Cliente</span>
+            <span class="fw-semibold">${esc(nombre)}</span>
+        </div>
+        <div class="vender-confirm-row">
+            <span class="text-muted">Cantidad</span>
+            <span class="fw-semibold">${cantidad} número${cantidad !== 1 ? 's' : ''}</span>
+        </div>
+        ${numerosHtml}
+        <div class="vender-confirm-row">
+            <span class="text-muted">Pago</span>
+            <span class="fw-semibold">${esc(metodo)}</span>
+        </div>
+        ${rifaTitle ? `
+        <div class="vender-confirm-row">
+            <span class="text-muted">Rifa</span>
+            <span class="fw-semibold">${esc(rifaTitle)}</span>
+        </div>` : ''}
+        <div class="vender-confirm-total mt-2 pt-2 border-top">
+            <span class="text-muted small d-block mb-0">Total a registrar</span>
+            <span class="fs-5 fw-bold text-success">${esc(venderFormatMoney(total))}</span>
+        </div>
+    </div>`;
+}
+
+function resetBotonesVenta(btnD, btnM) {
+    if (btnD) {
+        btnD.disabled = false;
+        btnD.innerHTML = 'CONFIRMAR VENTA';
+    }
+    if (btnM) {
+        btnM.disabled = false;
+        btnM.innerHTML = 'CONFIRMAR VENTA <i class="ti ti-check ms-1"></i>';
+    }
+}
+
+async function ejecutarVentaRegistro(opts) {
+    const {
+        btnD, btnM, spinnerHtml, cliente, metodo, total, numeroForzado,
+    } = opts;
+
+    const codigoVenta = 'AP' + Date.now() + Math.floor(Math.random() * 100);
+    const action = (!esRifaManual() && numeroForzado) ? 'crear_venta_mixta' : 'crear_venta';
+
+    if (btnD) {
+        btnD.disabled = true;
+        btnD.innerHTML = spinnerHtml;
+    }
+    if (btnM) {
+        btnM.disabled = true;
+        btnM.innerHTML = spinnerHtml;
+    }
+
+    const fd = new FormData();
+    fd.append('action', action);
+    fd.append('premiado_ticket', esRifaManual() ? '' : numeroForzado);
+    fd.append('code_sale', codigoVenta);
+    fd.append('quantity_sale', estado.cantidadSeleccionada);
+    fd.append('id_customer', cliente.id);
+    fd.append('id_raffle', estado.rifa.id);
+    fd.append('total_sale', total);
+    fd.append('payment_method_sale', metodo);
+    fd.append('name_customer', cliente.nombre);
+    fd.append('lastname_customer', cliente.apellido);
+    fd.append('phone_customer', cliente.celular);
+    fd.append('email_customer', cliente.email);
+    fd.append('department_customer', cliente.depto);
+    fd.append('city_customer', cliente.ciudad);
+
+    if (esRifaManual()) {
+        estado.numerosSeleccionados.forEach(id => fd.append('ticket_ids[]', id));
+    }
+
+    try {
+        const res = await fetch(estado.config.rutas.ventas, { method: 'POST', body: fd });
+        const json = await parseAjaxJson(res);
+
+        if (json.success) {
+            generarReciboFinal(json.id_sale);
+            return;
+        }
+
+        notifyErrorModal('Venta no registrada', extractApiMessage(json, 'No se pudo registrar la venta.'));
+        resetBotonesVenta(btnD, btnM);
+    } catch (e) {
+        const msg = e instanceof Error && e.message
+            ? e.message
+            : 'Error de conexión con el servidor. Intenta de nuevo.';
+        notifyErrorModal('Error al procesar la venta', msg);
+        resetBotonesVenta(btnD, btnM);
+    }
+}
+
+async function confirmarVenta(opts) {
+    const { cliente, metodo, total, cantidad } = opts;
+    const html = buildVentaConfirmHtml(cliente, total, metodo, cantidad);
+
+    if (typeof Swal === 'undefined') {
+        const ok = window.confirm(
+            `¿Registrar venta de ${cantidad} números por ${venderFormatMoney(total)}?`
+        );
+        if (ok) await ejecutarVentaRegistro(opts);
+        return;
+    }
+
+    const result = await Swal.fire({
+        title: 'Confirmar venta',
+        html,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, registrar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#adb5bd',
+        reverseButtons: true,
+        focusCancel: true,
+        buttonsStyling: true,
+        customClass: { popup: 'vender-confirm-popup' },
+    });
+
+    if (result.isConfirmed) {
+        await ejecutarVentaRegistro(opts);
+    }
+}
+
 async function procesarVenta() {
 
     const btnD = document.getElementById('btnCompletarVenta');
@@ -303,155 +1177,27 @@ async function procesarVenta() {
 
     if ((btnD && btnD.disabled) || (btnM && btnM.disabled)) return;
 
-    if (!estado.rifa || !estado.rifa.id) {
-        console.warn("[VENTA] No hay sorteo seleccionado");
-        return alertify.error("No hay sorteo seleccionado.");
+    const form = obtenerDatosFormularioVenta();
+    const error = validarDatosVenta(form);
+    if (error) {
+        notifyError(error, 'Venta');
+        return;
     }
 
-    const cliente = {
-        id: $('#idCliente').val(),
-        nombre: $('#nombreCliente').val().trim(),
-        apellido: $('#apellidoCliente').val().trim(),
-        celular: $('#celularCliente').val().trim(),
-        email: $('#emailCliente').val().trim(),
-        depto: $('#departamento').val(),
-        ciudad: $('#ciudad').val()
-    };
+    const total = calcularTotalVenta(estado.cantidadSeleccionada);
 
-    const metodo =
-        $('input[name="metodoPago"]:checked').val()
-        || $('input[name="metodoPagoMobile"]:checked').val();
-
-    if (estado.cantidadSeleccionada <= 0) {
-        console.warn("[VENTA] Cantidad inválida:", estado.cantidadSeleccionada);
-        return alertify.error("Debes indicar la cantidad de números.");
-    }
-
-    if (estado.cantidadSeleccionada < 3) {
-        return alertify.error("La compra mínima es de 3 stickers.");
-    }
-
-    if (!cliente.nombre || !cliente.apellido || !cliente.celular || !cliente.email || !cliente.depto || !cliente.ciudad) {
-        console.warn("[VENTA] Cliente incompleto:", cliente);
-        return alertify.error("Todos los campos obligatorios (*) deben estar llenos.");
-    }
-
-    if (!metodo) {
-        console.warn("[VENTA] Sin método de pago");
-        return alertify.error("Debes seleccionar un método de pago.");
-    }
-
-    const total = estado.cantidadSeleccionada * (estado.rifa?.precio || 0);
-
-    alertify.confirm(
-        "Confirmar Venta",
-        `¿Deseas registrar la venta de <b>${estado.cantidadSeleccionada}</b> números?`,
-        async function () {
-
-            const codigoVenta = "AP" + Date.now() + Math.floor(Math.random() * 100);
-
-            const numeroForzadoRaw = $('#numeroPremiado').val();
-            const numeroForzado = (numeroForzadoRaw ?? '').trim();
-
-            const action = numeroForzado ? 'crear_venta_mixta' : 'crear_venta';
-
-            // console.group("🧾 PROCESO VENTA DEBUG");
-            // console.log("➡️ Número forzado RAW:", numeroForzadoRaw);
-            // console.log("➡️ Número forzado TRIM:", numeroForzado);
-            // console.log("➡️ Acción seleccionada:", action);
-            // console.log("➡️ Cliente:", cliente);
-            // console.log("➡️ Cantidad:", estado.cantidadSeleccionada);
-            // console.log("➡️ Total:", total);
-            // console.groupEnd();
-
-            // debugger;
-
-            if (btnD) {
-                btnD.disabled = true;
-                btnD.innerHTML = spinnerHtml;
-            }
-            if (btnM) {
-                btnM.disabled = true;
-                btnM.innerHTML = spinnerHtml;
-            }
-
-            const fd = new FormData();
-
-            fd.append('action', action);
-            fd.append('premiado_ticket', numeroForzado);
-
-            fd.append('code_sale', codigoVenta);
-            fd.append('quantity_sale', estado.cantidadSeleccionada);
-            fd.append('id_customer', cliente.id);
-            fd.append('id_raffle', estado.rifa.id);
-            fd.append('total_sale', total);
-            fd.append('payment_method_sale', metodo);
-
-            fd.append('name_customer', cliente.nombre);
-            fd.append('lastname_customer', cliente.apellido);
-            fd.append('phone_customer', cliente.celular);
-            fd.append('email_customer', cliente.email);
-            fd.append('department_customer', cliente.depto);
-            fd.append('city_customer', cliente.ciudad);
-
-
-            try {
-
-                const res = await fetch(estado.config.rutas.ventas, {
-                    method: 'POST',
-                    body: fd
-                });
-
-                const json = await parseAjaxJson(res);
-
-                console.log("📩 RESPUESTA BACKEND:", json);
-
-                if (json.success) {
-
-                    alertify.success("Venta Exitosa");
-                    generarReciboFinal(json.id_sale);
-
-                } else {
-
-                    console.error("❌ Error backend:", json.message);
-
-                    alertify.error(json.message);
-
-                    if (btnD) {
-                        btnD.disabled = false;
-                        btnD.innerHTML = 'CONFIRMAR VENTA';
-                    }
-                    if (btnM) {
-                        btnM.disabled = false;
-                        btnM.innerHTML = 'CONFIRMAR VENTA <i class="ti ti-check ms-1"></i>';
-                    }
-                }
-
-            } catch (e) {
-
-                console.error("🔥 ERROR FETCH:", e);
-
-                const msg =
-                    e instanceof SyntaxError
-                        ? "Respuesta inválida del servidor (¿avisos PHP?). Abre la consola (F12). En .env pon DISPLAY_ERRORS=false."
-                        : "Error en el servidor";
-                alertify.error(msg);
-
-                if (btnD) {
-                    btnD.disabled = false;
-                    btnD.innerHTML = 'CONFIRMAR VENTA';
-                }
-                if (btnM) {
-                    btnM.disabled = false;
-                    btnM.innerHTML = 'CONFIRMAR VENTA <i class="ti ti-check ms-1"></i>';
-                }
-            }
-        },
-        null
-    ).set('labels', { ok: 'SÍ, VENDER', cancel: 'CANCELAR' });
+    await confirmarVenta({
+        btnD,
+        btnM,
+        spinnerHtml,
+        cliente: form.cliente,
+        metodo: form.metodo,
+        total,
+        numeroForzado: form.numeroForzado,
+        cantidad: estado.cantidadSeleccionada,
+    });
 }
 
-// --- RECIBO ---
 async function generarReciboFinal(idVenta) {
 
     const fd = new FormData();
@@ -469,8 +1215,9 @@ async function generarReciboFinal(idVenta) {
         const json = await parseAjaxJson(res);
 
         if (json.success) {
-
-            $('.fixed-bottom').addClass('d-none');
+            cerrarCheckoutVentaMobile();
+            const bar = document.getElementById('venderMobileBar');
+            if (bar) bar.classList.remove('is-visible');
 
             const container = document.querySelector('.body-wrapper-inner');
 
@@ -483,18 +1230,28 @@ async function generarReciboFinal(idVenta) {
                 </div>`;
 
             window.scrollTo(0, 0);
+        } else {
+            notifyErrorModal(
+                'Recibo no disponible',
+                extractApiMessage(json, 'La venta se registró pero no se pudo cargar el recibo.')
+            );
+            setTimeout(() => location.reload(), 4000);
         }
 
     } catch (e) {
+        notifyErrorModal(
+            'Error al cargar el recibo',
+            e instanceof Error ? e.message : 'No se pudo mostrar el comprobante de venta.'
+        );
 
-        alertify.error("Error visual al cargar el recibo.");
-
-        setTimeout(() => location.reload(), 3000);
+        setTimeout(() => location.reload(), 4000);
     }
 }
 
-// --- HELPERS ---
-window.procesarVentaMobile = () => procesarVenta();
+window.procesarVentaMobile = () => abrirCheckoutVentaMobile();
+window.abrirCheckoutVentaMobile = abrirCheckoutVentaMobile;
+window.cerrarCheckoutVentaMobile = cerrarCheckoutVentaMobile;
+window.confirmarVentaDesdeSheet = confirmarVentaDesdeSheet;
 
 function llenarFormulario(c) {
 

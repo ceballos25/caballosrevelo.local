@@ -19,17 +19,16 @@ function isOpen($files, $currentPage) {
   <div class="sidebar-shell">
     <div class="brand-logo d-flex align-items-center justify-content-between">
       <a href="dashboard.php" class="text-nowrap logo-img" style="display:flex; justify-content:center; width:100%;">
-        <img  style="width:80%; margin-top:10px;" class="d-flex" src="https://cdn.eldiadetusuerte.com/images/logos/logo-blanco.jpg" alt="<?php echo SITE_NAME; ?>" />
+        <img style="width:50%; margin-top:10px;" class="d-flex" data-site-logo-white src="https://cdn.caballosrevelo.com/logos/logo.png" alt="<?php echo SITE_NAME; ?>" loading="lazy" />
       </a>
       <div class="close-btn d-xl-none d-block sidebartoggler cursor-pointer" id="sidebarCollapse">
         <i class="ti ti-x fs-6"></i>
       </div>
     </div>
 
-    <nav class="sidebar-nav scroll-sidebar" data-simplebar="">
+    <nav class="sidebar-nav scroll-sidebar">
       <ul id="sidebarnav">
 
-        <!-- PRINCIPAL -->
         <li class="nav-small-cap">
           <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
           <span class="hide-menu">Principal</span>
@@ -54,11 +53,10 @@ function isOpen($files, $currentPage) {
             <i class="ti ti-building-bank"></i>
             <span class="hide-menu">Transferencias</span>
           </a>
-        </li>      
+        </li>
 
         <li><span class="sidebar-divider lg"></span></li>
 
-        <!-- CLIENTES / PROVEEDORES -->
         <li class="nav-small-cap">
           <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
           <span class="hide-menu">Terceros</span>
@@ -73,7 +71,6 @@ function isOpen($files, $currentPage) {
 
         <li><span class="sidebar-divider lg"></span></li>
 
-        <!-- PRODUCTOS / INVENTARIO -->
         <li class="nav-small-cap">
           <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
           <span class="hide-menu">Ventas y Números</span>
@@ -124,7 +121,6 @@ function isOpen($files, $currentPage) {
 
         <li><span class="sidebar-divider lg"></span></li>
 
-        <!-- CAJA / PAGOS -->
         <li class="nav-small-cap">
           <iconify-icon icon="solar:menu-dots-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
           <span class="hide-menu">Configuración</span>
@@ -136,6 +132,22 @@ function isOpen($files, $currentPage) {
             <span class="hide-menu">Rifas</span>
           </a>          
         </li>
+
+
+        <?php if ($isAdmin): ?>
+        <li class="sidebar-item <?= isActive('usuarios.php', $currentPage); ?>">
+          <a class="sidebar-link" href="usuarios.php"><i class="ti ti-user-shield"></i><span class="hide-menu">Usuarios</span></a>
+        </li>
+        <li class="sidebar-item <?= isActive('auditoria.php', $currentPage); ?>">
+          <a class="sidebar-link" href="auditoria.php"><i class="ti ti-history"></i><span class="hide-menu">Auditoría</span></a>
+        </li>
+        <li class="sidebar-item <?= isActive('configuracion-visual.php', $currentPage); ?>">
+          <a class="sidebar-link" href="configuracion-visual.php"><i class="ti ti-photo"></i><span class="hide-menu">Config. Visual</span></a>
+        </li>
+        <li class="sidebar-item <?= isActive('webhooks.php', $currentPage); ?>">
+          <a class="sidebar-link" href="webhooks.php"><i class="ti ti-webhook"></i><span class="hide-menu">Webhooks</span></a>
+        </li>
+        <?php endif; ?>
 
         <li class="sidebar-item <?= isActive('settings.php', $currentPage); ?>">
           <a class="sidebar-link" href="settings.php" aria-expanded="false">

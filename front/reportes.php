@@ -45,7 +45,9 @@ include_once ROOT_PATH . '/includes/head.php';
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <a href="dashboard.php" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i> Dashboard</a>
-                        <button type="button" class="btn btn-dark btn-sm" id="btnExportCsv"><i class="ti ti-file-download me-1"></i> Exportar CSV</button>
+                        <button type="button" class="btn btn-dark btn-sm" id="btnExportCsv"><i class="ti ti-file-download me-1"></i> CSV</button>
+                        <button type="button" class="btn btn-success btn-sm" id="btnExportExcel"><i class="ti ti-file-spreadsheet me-1"></i> Excel</button>
+                        <button type="button" class="btn btn-danger btn-sm" id="btnExportPdf"><i class="ti ti-file-type-pdf me-1"></i> PDF</button>
                     </div>
                 </div>
 
@@ -171,7 +173,7 @@ include_once ROOT_PATH . '/includes/head.php';
                                 <span class="small text-muted" id="resultMeta"></span>
                             </div>
                             <div class="card-body pt-0">
-                                <div class="report-table-wrap">
+                                <div class="report-table-wrap admin-table-desktop">
                                     <div id="reportTableLoader" class="report-loader d-none" aria-live="polite" aria-busy="true">
                                         <div class="text-center">
                                             <div class="spinner-border text-primary mb-2" role="status" aria-hidden="true"></div>
@@ -180,6 +182,7 @@ include_once ROOT_PATH . '/includes/head.php';
                                     </div>
                                     <div id="reportTable"></div>
                                 </div>
+                                <div class="admin-cards-mobile p-3" id="reportesMobile"></div>
                             </div>
                         </div>
                     </div>
@@ -192,6 +195,6 @@ include_once ROOT_PATH . '/includes/head.php';
 
 <script src="https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
 <?php
-$extra_js = '<script src="' . ASSETS_URL . '/js/reportes.js?v=3"></script>';
+$extra_js = '<script src="' . ASSETS_URL . '/js/admin-mobile.js?v=16"></script><script src="' . ASSETS_URL . '/js/reportes.js?v=7"></script>';
 include_once ROOT_PATH . '/includes/footer.php';
 ?>

@@ -39,24 +39,23 @@ include_once ROOT_PATH . "/includes/head.php";
                         </div>
                     </div>
                 </div>
+
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-                            <table class="table table-hover table-striped align-middle mb-0">
+                        <div class="table-responsive admin-table-cards-wrap">
+                            <table class="table table-hover align-middle mb-0 table-admin-cards">
                                 <thead class="table-light sticky-top" style="z-index: 10;">
                                     <tr>
-                                        <th class="ps-4">Cliente</th>
-
-                                        <th>Código</th>
-
-                                        <th class="text-center">Número</th>
-
-                                        <th class="text-end pe-4">Fecha</th>
+                                        <th class="ps-3">Cliente</th>
+                                        <th class="d-none d-lg-table-cell text-center">Número</th>
+                                        <th class="d-none d-lg-table-cell">Detalle</th>
+                                        <th class="d-none d-lg-table-cell">Fecha</th>
+                                        <th class="text-end pe-3">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bodyTabla">
                                     <tr>
-                                        <td colspan="4" class="text-center py-5 text-muted">Cargando...</td>
+                                        <td colspan="5" class="text-center py-5 text-muted">Cargando...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -78,8 +77,19 @@ include_once ROOT_PATH . "/includes/head.php";
     </div>
 </div>
 
+<div class="modal fade" id="modalRecibo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Comprobante de Venta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="cuerpoRecibo"></div>
+        </div>
+    </div>
+</div>
 
 <?php
-$extra_js = '<script src="' . ASSETS_URL . '/js/numeros-vendidos.js?v=2"></script>';
+$extra_js = '<script src="' . ASSETS_URL . '/js/admin-mobile.js?v=19"></script><script src="' . ASSETS_URL . '/js/numeros-vendidos.js?v=13"></script>';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>

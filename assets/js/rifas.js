@@ -1,6 +1,3 @@
-/**
- * rifas.js - Gestión Completa Restaurada (Talla Mundial)
- */
 let rifasCache = [], idRifaEliminar = null, modalRifa = null, modalConfirm = null;
 let paginaActual = 1;
 const registrosPorPagina = 10;
@@ -20,13 +17,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const selectStatus = document.getElementById('filterStatus');
     if (selectStatus) selectStatus.addEventListener('change', cargarRifas);
+
+    const inputPrecio = document.getElementById('precio');
+    if (inputPrecio && typeof adminBindCOPInput === 'function') adminBindCOPInput(inputPrecio);
 });
 
-// Versión corregida que permite el valor 0
 function setVal(id, value) {
     const el = document.getElementById(id);
     if (el) {
-        // Si el valor es null o undefined, ponemos vacío. Si es 0 o cualquier otra cosa, ponemos el valor.
+
         el.value = (value !== null && value !== undefined) ? value : '';
     }
 }
@@ -47,15 +46,16 @@ async function cargarRifas() {
         formData.append('search', searchInput ? searchInput.value.trim() : '');
         formData.append('status', statusSelect ? statusSelect.value : '');
 
-        const response = await fetch(RIFAS_ENDPOINT, { method: 'POST', body: formData });
-        const data = await response.json();
+        const data = await adminFetchJson(RIFAS_ENDPOINT, { body: formData });
 
         if (data.success) {
             rifasCache = data.data || [];
             renderizarTodo();
+        } else {
+            adminNotifyError(adminExtractMessage(data, 'No se pudieron cargar las rifas.'));
         }
     } catch (error) {
-        console.error('Error:', error);
+        adminNotifyError(error instanceof Error ? error.message : 'No se pudieron cargar las rifas.');
     } finally {
         if (typeof hidePreloader === 'function') hidePreloader();
     }
@@ -79,36 +79,96 @@ function renderTabla(rifas) {
     const tbody = document.getElementById('bodyTabla');
     if (!tbody) return;
     if (!rifas || rifas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">No hay rifas registradas</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">No hay rifas registradas</td></tr>`;
+        if (typeof renderAdminMobileRows === 'function') renderAdminMobileRows('rifasMobile', []);
         return;
     }
 
     tbody.innerHTML = rifas.map(r => {
         const activo = parseInt(r.status_raffle) === 1;
+        const dt = adminFormatDateColombia(r.date_raffle);
         return `
-            <tr>
-                <td>${r.id_raffle}</td>
-                <td>${r.title_raffle}</td>
-                <td>${r.description_raffle || '-'}</td>
-                <td>${r.digits_raffle} cifras</td>
-                <td>$${parseFloat(r.price_raffle).toLocaleString()}</td>
-                <td>${r.date_raffle || '-'}</td>
-                <td>${r.promotions_raffle || '-'}</td>
-                <td><span class="badge ${activo ? 'bg-success' : 'bg-danger'}">${activo ? 'Activa' : 'Inactiva'}</span></td>
-                <td>
-                    <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-primary" onclick="editarRifa(${r.id_raffle})"><i class="ti ti-edit"></i></button>
-                    </div>
-                </td>
+            <tr class="align-middle admin-table-row">
+                <td class="py-3 ps-4">${r.id_raffle}</td>
+                <td class="py-3 fw-bold text-dark">${adminEscapeHtml(r.title_raffle)}</td>
+                <td class="py-3 text-truncate" style="max-width:160px" title="${adminEscapeHtml(r.description_raffle || '')}">${r.description_raffle || '-'}</td>
+                <td class="py-3">${r.digits_raffle} cifras</td>
+                <td class="py-3 fw-bold">$${(typeof formatPrecioCOP === 'function' ? formatPrecioCOP(r.price_raffle) : adminFormatCOP(r.price_raffle))}</td>
+                <td class="py-3">${adminDateBlock(dt.fecha, dt.hora || '')}</td>
+                <td class="py-3"><span class="badge ${activo ? 'bg-success' : 'bg-danger'}">${activo ? 'Activa' : 'Inactiva'}</span></td>
+                <td class="py-3">${adminIconActions(adminIconBtn(`editarRifa(${r.id_raffle})`, 'ti-edit', 'primary', 'Editar'))}</td>
             </tr>`;
     }).join('');
+
+    if (typeof renderAdminMobileRows === 'function') {
+        renderAdminMobileRows('rifasMobile', rifas.map(r => renderRifaMobileCard(r)));
+    }
+}
+
+function renderRifaMobileCard(r) {
+    const activo = parseInt(r.status_raffle) === 1;
+    const dt = adminFormatDateColombia(r.date_raffle);
+    const precio = `$${typeof formatPrecioCOP === 'function' ? formatPrecioCOP(r.price_raffle) : adminFormatCOP(r.price_raffle)}`;
+    const desc = String(r.description_raffle || '').trim();
+    const id = Number(r.id_raffle);
+
+    const statusClass = activo ? 'rifa-mobile-card--active' : 'rifa-mobile-card--inactive';
+    const statusBadge = activo
+        ? '<span class="badge bg-success-subtle text-success border border-success-subtle rifa-mobile-card__status"><i class="ti ti-circle-check me-1"></i>Activa</span>'
+        : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rifa-mobile-card__status"><i class="ti ti-circle-x me-1"></i>Inactiva</span>';
+
+    const fechaLine = dt.hora
+        ? `${adminEscapeHtml(dt.fecha)} · ${adminEscapeHtml(dt.hora)}`
+        : adminEscapeHtml(dt.fecha || '—');
+
+    return `
+    <article class="rifa-mobile-card ${statusClass}">
+        <div class="rifa-mobile-card__head">
+            <div class="rifa-mobile-card__avatar" aria-hidden="true">
+                <i class="ti ti-ticket"></i>
+            </div>
+            <div class="rifa-mobile-card__head-text min-w-0">
+                <h3 class="rifa-mobile-card__title">${adminEscapeHtml(r.title_raffle)}</h3>
+                <span class="rifa-mobile-card__id">Rifa #${id}</span>
+            </div>
+            ${statusBadge}
+        </div>
+        ${desc ? `<p class="rifa-mobile-card__desc" title="${adminEscapeHtml(desc)}">${adminEscapeHtml(desc)}</p>` : ''}
+        <div class="rifa-mobile-card__meta">
+            <div class="rifa-mobile-chip rifa-mobile-chip--price">
+                <span class="rifa-mobile-chip__icon"><i class="ti ti-currency-dollar"></i></span>
+                <span class="rifa-mobile-chip__body">
+                    <span class="rifa-mobile-chip__label">Precio</span>
+                    <span class="rifa-mobile-chip__value">${adminEscapeHtml(precio)}</span>
+                </span>
+            </div>
+            <div class="rifa-mobile-chip">
+                <span class="rifa-mobile-chip__icon"><i class="ti ti-hash"></i></span>
+                <span class="rifa-mobile-chip__body">
+                    <span class="rifa-mobile-chip__label">Cifras</span>
+                    <span class="rifa-mobile-chip__value">${adminEscapeHtml(String(r.digits_raffle))}</span>
+                </span>
+            </div>
+            <div class="rifa-mobile-chip rifa-mobile-chip--wide">
+                <span class="rifa-mobile-chip__icon"><i class="ti ti-calendar-event"></i></span>
+                <span class="rifa-mobile-chip__body">
+                    <span class="rifa-mobile-chip__label">Sorteo</span>
+                    <span class="rifa-mobile-chip__value">${fechaLine}</span>
+                </span>
+            </div>
+        </div>
+        <div class="rifa-mobile-card__actions">
+            <button type="button" class="btn btn-primary btn-sm w-100" onclick="editarRifa(${id})">
+                <i class="ti ti-edit me-1"></i> Editar rifa
+            </button>
+        </div>
+    </article>`;
 }
 
 function abrirModal() {
     const form = document.getElementById('formRifa');
     if (form) form.reset();
     setVal('rifaId', '');
-    setVal('promociones', ''); 
     setTxt('modalTitle', 'Nueva Rifa');
     if(modalRifa) modalRifa.show();
 }
@@ -120,28 +180,40 @@ function editarRifa(id) {
     setVal('rifaId', r.id_raffle);
     setVal('titulo', r.title_raffle);
     setVal('descripcion', r.description_raffle);
-    setVal('promociones', r.promotions_raffle);
-    setVal('precio', r.price_raffle);
+    setVal('precio', typeof adminFormatCOP === 'function' ? adminFormatCOP(r.price_raffle) : r.price_raffle);
     setVal('cifras', r.digits_raffle);
     setVal('fecha', r.date_raffle ? r.date_raffle.replace(" ", "T") : '');
     setVal('estado', r.status_raffle);
-    
+    setVal('tipoRifa', r.type_raffle || 'automatic');
     setTxt('modalTitle', 'Editar Rifa');
     if(modalRifa) modalRifa.show();
 }
 
 async function guardarRifa() {
     const id = document.getElementById('rifaId')?.value;
+    const precioNum = typeof adminParseCOP === 'function'
+        ? adminParseCOP(document.getElementById('precio')?.value)
+        : (typeof parsePrecioCOP === 'function'
+            ? parsePrecioCOP(document.getElementById('precio')?.value)
+            : 0);
+
+    if (!precioNum || precioNum <= 0) {
+        alertify.error('Ingresa un precio válido para la boleta');
+        document.getElementById('precio')?.focus();
+        return;
+    }
+
     const formData = new FormData();
     formData.append('action', id ? 'actualizar' : 'crear');
     formData.append('id_raffle', id || '');
     formData.append('title_raffle', document.getElementById('titulo')?.value.trim() || '');
     formData.append('description_raffle', document.getElementById('descripcion')?.value.trim() || '');
-    formData.append('promotions_raffle', document.getElementById('promociones')?.value.trim() || ''); 
-    formData.append('price_raffle', document.getElementById('precio')?.value || '0');
+    formData.append('price_raffle', String(precioNum));
     formData.append('digits_raffle', document.getElementById('cifras')?.value || '4');
     formData.append('date_raffle', document.getElementById('fecha')?.value || '');
     formData.append('status_raffle', document.getElementById('estado')?.value || '1');
+    formData.append('type_raffle', document.getElementById('tipoRifa')?.value || 'automatic');
+    formData.append('csrf_token', window.APP_CSRF_TOKEN || '');
 
     if (typeof showPreloader === 'function') showPreloader();
     try {
@@ -167,6 +239,7 @@ async function confirmarEliminar() {
     const fd = new FormData();
     fd.append('action', 'eliminar');
     fd.append('id_raffle', idRifaEliminar);
+    fd.append('csrf_token', window.APP_CSRF_TOKEN || '');
     if (typeof showPreloader === 'function') showPreloader();
     try {
         const res = await fetch(RIFAS_ENDPOINT, { method: 'POST', body: fd });
@@ -175,7 +248,11 @@ async function confirmarEliminar() {
             alertify.success('Eliminado');
             if(modalConfirm) modalConfirm.hide();
             cargarRifas();
+        } else {
+            alertify.error(adminExtractMessage(data, 'No se pudo eliminar la rifa.'));
         }
+    } catch (e) {
+        alertify.error(e instanceof Error ? e.message : 'Error en la solicitud');
     } finally { if (typeof hidePreloader === 'function') hidePreloader(); }
 }
 

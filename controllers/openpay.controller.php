@@ -24,7 +24,7 @@ class OpenPayController
             'amount' => (float)$b->amount_payment_backup,
             'currency' => 'COP',
             'iva' => '0',
-            'description' => 'Compra Marketing Jorge Herrera',
+            'description' => 'Compra Caballos Revelo',
             'order_id' => $b->code_payment_backup,
             'redirect_url' => OPENPAY_RETURN_URL . '?order_id=' . $b->code_payment_backup,
             'customer' => [
@@ -66,12 +66,9 @@ class OpenPayController
         $responseData = json_decode((string)$response, true);
 
         if ($httpCode === 200 || $httpCode === 201) {
-            $existingMeta = \App\Application\Marketing\MetaConversionsApi::userDataFromPaymentBackup((array)$b);
+            $existingMeta = \App\Application\Marketing\MetaConversionsApi::extractStoredMeta((array)$b);
             if ($existingMeta !== []) {
-                $responseData['meta'] = [
-                    'fbp' => $existingMeta['fbp'] ?? null,
-                    'fbc' => $existingMeta['fbc'] ?? null,
-                ];
+                $responseData['meta'] = $existingMeta;
             }
 
             Db::update(

@@ -8,31 +8,26 @@ final class MetaConversionsApi
     private const DEFAULT_API_VERSION = 'v20.0';
     private const FBC_MAX_AGE_SECONDS = 90 * 24 * 60 * 60;
 
+    /** Eventos permitidos en navegador (Pixel / meta.ajax.php). */
+    public const BROWSER_TRACK_EVENTS = ['PageView'];
+
+    /** Eventos enviados por CAPI en servidor. */
+    public const CAPI_TRACK_EVENTS = ['PageView', 'Purchase'];
+
     /** @var list<string> */
     public const STANDARD_EVENTS = [
         'PageView',
-        'ViewContent',
-        'Search',
-        'AddToCart',
-        'AddToWishlist',
-        'InitiateCheckout',
-        'AddPaymentInfo',
         'Purchase',
-        'Lead',
-        'CompleteRegistration',
-        'Contact',
-        'CustomizeProduct',
-        'Donate',
-        'FindLocation',
-        'Schedule',
-        'StartTrial',
-        'SubmitApplication',
-        'Subscribe',
     ];
+
+    public static function isAllowedTrackEvent(string $eventName): bool
+    {
+        return in_array(trim($eventName), self::BROWSER_TRACK_EVENTS, true);
+    }
 
     public static function isStandardEvent(string $eventName): bool
     {
-        return in_array(trim($eventName), self::STANDARD_EVENTS, true);
+        return in_array(trim($eventName), self::CAPI_TRACK_EVENTS, true);
     }
 
     public static function eventId(string $eventName, ?string $reference = null): string
@@ -83,25 +78,122 @@ final class MetaConversionsApi
     public static function sendPurchase(array|object $sale, ?string $eventId = null, array $extraUserData = []): bool
     {
         $sale = is_object($sale) ? get_object_vars($sale) : $sale;
-        $value = (float)($sale['total_sale'] ?? $sale['value'] ?? 0);
-        $quantity = (int)($sale['quantity_sale'] ?? $sale['quantity'] ?? 1);
+        $idSale = (int)($sale['id_sale'] ?? 0);
+        $codeSale = (string)($sale['code_sale'] ?? '');
+        $customData = self::buildPurchaseCustomDataFromSale($sale);
 
-        $customData = [
-            'currency' => 'COP',
-            'value' => $value,
-            'content_type' => 'product',
-            'num_items' => max(1, $quantity),
-            'order_id' => (string)($sale['code_sale'] ?? $sale['id_sale'] ?? ''),
-        ];
+        $userData = array_merge(
+            self::userDataFromCustomer($sale),
+            self::userDataFromStoredMeta($extraUserData)
+        );
 
         return self::sendEvent(
             'Purchase',
             $customData,
-            array_merge(self::userDataFromCustomer($sale), $extraUserData),
-            $eventId ?? self::eventId('Purchase', (string)($sale['id_sale'] ?? $sale['code_sale'] ?? '')),
+            array_filter($userData),
+            $eventId ?? self::purchaseEventId($idSale, $codeSale),
             null,
-            $extraUserData === []
+            false
         );
+    }
+
+    public static function purchaseEventId(int $idSale, string $codeSale = ''): string
+    {
+        $reference = $idSale > 0
+            ? (string)$idSale
+            : (trim($codeSale) !== '' ? trim($codeSale) : null);
+
+        return self::eventId('Purchase', $reference);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function buildPurchaseCustomData(string $orderId, float $value, int $quantity, int $idSale = 0): array
+    {
+        return self::buildPurchaseCustomDataFromSale([
+            'code_sale' => $orderId,
+            'total_sale' => $value,
+            'quantity_sale' => $quantity,
+            'id_sale' => $idSale,
+        ]);
+    }
+
+    /**
+     * Formato Meta estándar: solo currency + value.
+     *
+     * @param array<string, mixed> $sale
+     * @return array{currency: string, value: float}
+     */
+    public static function buildPurchaseCustomDataFromSale(array $sale): array
+    {
+        $value = (float)($sale['total_sale'] ?? $sale['value'] ?? 0);
+
+        return self::sanitizePurchaseCustomData([
+            'currency' => 'COP',
+            'value' => $value,
+        ]);
+    }
+
+    /**
+     * @return array{currency: string, value: float}
+     */
+    public static function sanitizePurchaseCustomData(array $customData): array
+    {
+        $currency = strtoupper(trim((string)($customData['currency'] ?? 'COP')));
+
+        return [
+            'currency' => $currency !== '' ? $currency : 'COP',
+            'value' => round((float)($customData['value'] ?? 0), 2),
+        ];
+    }
+
+    /**
+     * Meta del checkout (IP, user-agent, cookies Meta) para CAPI Purchase posterior.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, string>
+     */
+    public static function buildCheckoutMetaContext(array $input = []): array
+    {
+        $ip = self::normalizeClientIp($input['client_ip_address'] ?? null) ?? self::clientIp();
+        $ua = trim((string)($input['client_user_agent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? '')));
+
+        return array_filter([
+            'fbp' => trim((string)($input['meta_fbp'] ?? $input['fbp'] ?? '')),
+            'fbc' => trim((string)($input['meta_fbc'] ?? $input['fbc'] ?? '')),
+            'client_ip_address' => $ip,
+            'client_user_agent' => $ua !== '' ? $ua : null,
+        ], static fn($value) => $value !== null && $value !== '');
+    }
+
+    /**
+     * @param array<string, mixed> $backup
+     * @return array<string, mixed>
+     */
+    public static function extractStoredMeta(array $row): array
+    {
+        foreach (['openpay_response_payment_backup', 'meta_transfer'] as $field) {
+            $raw = (string)($row[$field] ?? '');
+            if ($raw === '') {
+                continue;
+            }
+
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                continue;
+            }
+
+            if (isset($decoded['meta']) && is_array($decoded['meta'])) {
+                return $decoded['meta'];
+            }
+
+            if (isset($decoded['client_ip_address']) || isset($decoded['fbp'])) {
+                return $decoded;
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -110,22 +202,21 @@ final class MetaConversionsApi
      */
     public static function userDataFromPaymentBackup(array $backup): array
     {
-        $raw = (string)($backup['openpay_response_payment_backup'] ?? '');
-        if ($raw === '') {
-            return [];
-        }
+        return self::userDataFromStoredMeta(self::extractStoredMeta($backup));
+    }
 
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
-            return [];
-        }
-
-        $meta = is_array($decoded['meta'] ?? null) ? $decoded['meta'] : [];
-
+    /**
+     * @param array<string, mixed> $meta
+     * @return array<string, mixed>
+     */
+    public static function userDataFromStoredMeta(array $meta): array
+    {
         return array_filter([
-            'fbp' => $meta['fbp'] ?? null,
-            'fbc' => $meta['fbc'] ?? null,
-        ]);
+            'fbp' => trim((string)($meta['fbp'] ?? '')) ?: null,
+            'fbc' => trim((string)($meta['fbc'] ?? '')) ?: null,
+            'client_ip_address' => self::normalizeClientIp($meta['client_ip_address'] ?? null),
+            'client_user_agent' => trim((string)($meta['client_user_agent'] ?? '')) ?: null,
+        ], static fn($value) => $value !== null && $value !== '');
     }
 
     /**
@@ -136,10 +227,10 @@ final class MetaConversionsApi
         self::logDebugResult('NO_ENVIADO', [
             'event_name' => 'Purchase',
             'event_id' => self::eventId('Purchase', (string)($sale['id_sale'] ?? $sale['code_sale'] ?? '')),
-            'custom_data' => [
+            'custom_data' => self::sanitizePurchaseCustomData([
+                'currency' => 'COP',
                 'value' => (float)($sale['total_sale'] ?? $sale['value'] ?? 0),
-                'order_id' => (string)($sale['code_sale'] ?? $sale['id_sale'] ?? ''),
-            ],
+            ]),
         ], $detail);
     }
 
@@ -149,9 +240,39 @@ final class MetaConversionsApi
      */
     public static function sanitizeCustomData(array $customData): array
     {
-        unset($customData['content_name']);
+        unset(
+            $customData['content_name'],
+            $customData['content_names'],
+            $customData['search_string']
+        );
 
-        foreach (['content_category', 'search_string'] as $key) {
+        if (isset($customData['contents']) && is_array($customData['contents'])) {
+            $contents = [];
+            foreach ($customData['contents'] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $id = preg_replace('/[^0-9]/', '', (string)($item['id'] ?? '')) ?? '';
+                if ($id === '') {
+                    continue;
+                }
+                $row = [
+                    'id' => $id,
+                    'quantity' => max(1, (int)($item['quantity'] ?? 1)),
+                ];
+                if (isset($item['item_price'])) {
+                    $row['item_price'] = round((float)$item['item_price'], 2);
+                }
+                $contents[] = $row;
+            }
+            if ($contents === []) {
+                unset($customData['contents']);
+            } else {
+                $customData['contents'] = $contents;
+            }
+        }
+
+        foreach (['content_category'] as $key) {
             if (!isset($customData[$key])) {
                 continue;
             }
@@ -191,11 +312,7 @@ final class MetaConversionsApi
         }
 
         if (self::containsBlockedMarketingTerms($reference)) {
-            $reference = (string)preg_replace(
-                '/sticker|stickers|rifa|rifas|raffle|raffles|ticket|tickets|suerte|sorteo|boleta|boletas|paquete|paquetes|transferencia|compra[\s\-]?web/iu',
-                '',
-                $reference
-            );
+            $reference = (string)preg_replace(self::blockedTermsPattern(), '', $reference);
         }
 
         $reference = preg_replace('/[^a-z0-9\-]+/', '-', $reference) ?? '';
@@ -204,12 +321,16 @@ final class MetaConversionsApi
         return $reference !== '' ? $reference : null;
     }
 
+    private static function blockedTermsPattern(): string
+    {
+        return '/sticker|stickers|rifa|rifas|raffle|raffles|sorteo|sorteos|loteria|loter[ií]a|lottery|'
+            . 'ticket|tickets|suerte|boleta|boletas|paquete|paquetes|premio|premios|bingo|apuesta|'
+            . 'transferencia|compra[\s\-]?web/iu';
+    }
+
     private static function containsBlockedMarketingTerms(string $value): bool
     {
-        return (bool)preg_match(
-            '/sticker|stickers|rifa|rifas|raffle|raffles|ticket|tickets|suerte|sorteo|boleta|boletas|paquete|paquetes|transferencia|compra[\s\-]?web/iu',
-            $value
-        );
+        return (bool)preg_match(self::blockedTermsPattern(), $value);
     }
 
     /**
@@ -224,7 +345,9 @@ final class MetaConversionsApi
         ?int $eventTime = null,
         bool $includeRequestUserData = true
     ): bool {
-        $customData = self::sanitizeCustomData($customData);
+        $customData = $eventName === 'Purchase'
+            ? self::sanitizePurchaseCustomData($customData)
+            : self::sanitizeCustomData($customData);
         if (!self::isEnabled()) {
             self::logDebugResult('NO_ENVIADO', [
                 'event_name' => $eventName,
@@ -237,11 +360,16 @@ final class MetaConversionsApi
         $pixelId = self::pixelId();
         $accessToken = self::accessToken();
         if ($pixelId === '' || $accessToken === '') {
-            self::logDebugResult('NO_ENVIADO', [
+            $missingCreds = [
                 'event_name' => $eventName,
                 'event_id' => $eventId ?? '',
                 'custom_data' => $customData,
-            ], 'Falta META_PIXEL_ID o META_ACCESS_TOKEN');
+            ];
+            if ($eventName === 'Purchase') {
+                self::logResult('NO_ENVIADO', $missingCreds, 'Falta META_PIXEL_ID o META_ACCESS_TOKEN');
+            } else {
+                self::logDebugResult('NO_ENVIADO', $missingCreds, 'Falta META_PIXEL_ID o META_ACCESS_TOKEN');
+            }
             return false;
         }
 
@@ -249,12 +377,15 @@ final class MetaConversionsApi
             'event_name' => $eventName,
             'event_time' => $eventTime ?? time(),
             'action_source' => 'website',
-            'event_source_url' => self::eventSourceUrl(),
             'user_data' => self::sanitizeUserDataIdentifiers(array_filter(array_merge(
                 $includeRequestUserData ? self::requestUserData() : [],
                 $userData
             ))),
         ];
+
+        if ($eventName !== 'Purchase') {
+            $event['event_source_url'] = self::eventSourceUrl();
+        }
 
         if ($eventId !== null && trim($eventId) !== '') {
             $event['event_id'] = trim($eventId);
@@ -278,9 +409,19 @@ final class MetaConversionsApi
         return defined('META_PIXEL_ID') ? trim((string)\META_PIXEL_ID) : '';
     }
 
+    public static function isPixelConfigured(): bool
+    {
+        return self::pixelId() !== '';
+    }
+
+    public static function isCapiConfigured(): bool
+    {
+        return self::isPixelConfigured() && self::accessToken() !== '';
+    }
+
     public static function isConfigured(): bool
     {
-        return self::pixelId() !== '' && self::accessToken() !== '';
+        return self::isCapiConfigured();
     }
 
     private static function isEnabled(): bool
@@ -349,7 +490,11 @@ final class MetaConversionsApi
             return false;
         }
 
-        self::logDebugResult('ENVIADO', $event, self::metaResponseDetail($httpCode, (string)$response));
+        if (in_array($event['event_name'] ?? '', ['Purchase', 'PageView'], true)) {
+            self::logResult('ENVIADO', $event, self::metaResponseDetail($httpCode, (string)$response));
+        } else {
+            self::logDebugResult('ENVIADO', $event, self::metaResponseDetail($httpCode, (string)$response));
+        }
 
         return true;
     }
@@ -393,12 +538,11 @@ final class MetaConversionsApi
         $customData = is_array($event['custom_data'] ?? null) ? $event['custom_data'] : [];
 
         self::log(sprintf(
-            'Meta CAPI %s: %s event_id=%s value=%s order_id=%s detail=%s',
+            'Meta CAPI %s: %s event_id=%s value=%s detail=%s',
             $status,
             (string)($event['event_name'] ?? ''),
             (string)($event['event_id'] ?? ''),
             isset($customData['value']) ? (string)$customData['value'] : '',
-            isset($customData['order_id']) ? (string)$customData['order_id'] : '',
             $detail
         ));
     }
@@ -460,6 +604,15 @@ final class MetaConversionsApi
      */
     private static function sanitizeUserDataIdentifiers(array $userData): array
     {
+        if (isset($userData['client_ip_address'])) {
+            $ip = self::normalizeClientIp($userData['client_ip_address']);
+            if ($ip === null) {
+                unset($userData['client_ip_address']);
+            } else {
+                $userData['client_ip_address'] = $ip;
+            }
+        }
+
         if (isset($userData['fbc'])) {
             $fbc = trim((string)$userData['fbc']);
             if (!self::isValidFbc($fbc)) {
@@ -502,15 +655,22 @@ final class MetaConversionsApi
 
     private static function clientIp(): ?string
     {
-        $candidates = [
-            $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
-            $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
-            $_SERVER['REMOTE_ADDR'] ?? '',
-        ];
+        return self::normalizeClientIp(null);
+    }
+
+    private static function normalizeClientIp(mixed $value): ?string
+    {
+        $candidates = [];
+        if ($value !== null && trim((string)$value) !== '') {
+            $candidates[] = (string)$value;
+        }
+        $candidates[] = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '';
+        $candidates[] = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+        $candidates[] = $_SERVER['REMOTE_ADDR'] ?? '';
 
         foreach ($candidates as $candidate) {
             $ip = trim(explode(',', (string)$candidate)[0]);
-            if ($ip !== '') {
+            if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP)) {
                 return $ip;
             }
         }

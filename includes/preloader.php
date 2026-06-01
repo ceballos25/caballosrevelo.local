@@ -6,7 +6,6 @@
 </div>
 
 <script>
-    // Funciones globales disponibles en todas las vistas
     function showPreloader() {
         const p = document.getElementById('preloader-global');
         if(p) p.classList.remove('d-none');

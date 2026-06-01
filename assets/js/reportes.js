@@ -1,6 +1,3 @@
-/**
- * Reportería visual — Tabulator + API segura (lista blanca).
- */
 const state = {
   datasets: [],
   currentFields: [],
@@ -8,6 +5,7 @@ const state = {
   measures: [],
   filters: [],
   table: null,
+  lastResult: null,
 };
 const REPORTS_ENDPOINT = '/front/ajax/reports.ajax.php';
 const DEFAULT_RUN_BUTTON_HTML = '<i class="ti ti-player-play me-1"></i> Ejecutar consulta';
@@ -91,7 +89,6 @@ const FIELD_EXACT_LABELS = {
   price_raffle: 'Precio rifa',
   digits_raffle: 'Cifras rifa',
   date_raffle: 'Fecha sorteo',
-  promotions_raffle: 'Promociones rifa',
   status_raffle: 'Estado rifa',
   date_created_raffle: 'Fecha creacion rifa',
   date_updated_raffle: 'Fecha actualizacion rifa',
@@ -142,7 +139,7 @@ function postReports(action, extra = {}) {
   Object.entries(extra).forEach(([k, v]) => {
     if (v !== undefined && v !== null) fd.append(k, v);
   });
-  return fetch(REPORTS_ENDPOINT, { method: 'POST', body: fd }).then((r) => r.json());
+  return adminFetchJson(REPORTS_ENDPOINT, { body: fd });
 }
 
 function setDefaultDates() {
@@ -322,6 +319,27 @@ function setReportLoading(isLoading) {
   }
 }
 
+function renderReportMobileCards(cols, rows) {
+  if (typeof renderAdminMobileRows !== 'function') return;
+  const fields = cols.slice(0, 6);
+  renderAdminMobileRows('reportesMobile', rows.slice(0, 200).map((row, i) => {
+    const first = fields[0];
+    const titleVal = first ? String(row[first.field] ?? `Fila ${i + 1}`) : `Fila ${i + 1}`;
+    const fieldsHtml = fields.map(c => {
+      const val = row[c.field];
+      const display = val === null || val === undefined ? '—' : val;
+      return `<div class="admin-mobile-row__field">
+        <div class="text-muted small">${adminEscapeHtml(c.title || c.field)}</div>
+        <div class="fw-medium text-truncate" title="${adminEscapeHtml(String(display))}">${adminEscapeHtml(String(display))}</div>
+      </div>`;
+    }).join('');
+    return adminMobileRow(
+      adminMobileSection(`<div class="fw-bold text-dark text-truncate" title="${adminEscapeHtml(titleVal)}">${adminEscapeHtml(titleVal)}</div>`) +
+      `<div class="admin-mobile-row__fields">${fieldsHtml}</div>`
+    );
+  }));
+}
+
 async function runQuery() {
   const spec = buildSpec();
   if (!spec.dimensions.length && !spec.measures.length) {
@@ -339,6 +357,7 @@ async function runQuery() {
     }
     const cols = buildColumns(res.columns || []);
     const data = res.rows || [];
+    state.lastResult = { columns: res.columns || [], rows: data };
     if (state.table) state.table.destroy();
     state.table = new Tabulator('#reportTable', {
       data,
@@ -353,9 +372,9 @@ async function runQuery() {
       placeholder: 'Sin filas',
     });
     document.getElementById('resultMeta').textContent = `${data.length} filas · ${cols.length} columnas`;
+    renderReportMobileCards(cols, data);
   } catch (e) {
-    console.error(e);
-    alertify.error('Error de red o servidor');
+    alertify.error(e instanceof Error ? e.message : 'Error de red o servidor');
     document.getElementById('resultMeta').textContent = '';
   } finally {
     setReportLoading(false);
@@ -477,11 +496,54 @@ function exportCsv() {
   else alertify.warning('Ejecuta una consulta primero');
 }
 
+async function exportServer(action, ext, mime) {
+  if (!state.lastResult || !state.lastResult.rows || !state.lastResult.rows.length) {
+    alertify.warning('Ejecuta una consulta primero');
+    return;
+  }
+  const spec = buildSpec();
+  const fd = new FormData();
+  fd.append('action', action);
+  fd.append('spec', JSON.stringify(spec));
+  fd.append('title', document.getElementById('datasetSelect')?.selectedOptions?.[0]?.text || 'reporte');
+  try {
+    const res = await fetch(REPORTS_ENDPOINT, { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alertify.error(err.message || 'No autorizado o error al exportar');
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'reporte_edts.' + ext;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alertify.error(e instanceof Error ? e.message : 'Error al exportar');
+  }
+}
+
+function exportExcel() {
+  exportServer('export_excel', 'xls', 'application/vnd.ms-excel');
+}
+
+function exportPdf() {
+  exportServer('export_pdf', 'pdf', 'application/pdf');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   setDefaultDates();
-  await loadSchema();
-  await loadPresets();
-  await refreshSaved();
+  try {
+    await loadSchema();
+    await loadPresets();
+    await refreshSaved();
+  } catch (e) {
+    alertify.error(e instanceof Error ? e.message : 'No se pudo inicializar reportes.');
+  }
   renderChips();
 
   document.getElementById('datasetSelect').addEventListener('change', () => {
@@ -527,6 +589,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btnRun').addEventListener('click', runQuery);
   document.getElementById('btnApplyPreset').addEventListener('click', applyPreset);
   document.getElementById('btnExportCsv').addEventListener('click', exportCsv);
+  document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
+  document.getElementById('btnExportPdf').addEventListener('click', exportPdf);
   document.getElementById('btnSave').addEventListener('click', saveReport);
   document.getElementById('btnLoadSaved').addEventListener('click', loadSaved);
   document.getElementById('btnDeleteSaved').addEventListener('click', deleteSaved);

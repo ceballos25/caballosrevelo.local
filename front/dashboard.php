@@ -27,11 +27,11 @@ include_once ROOT_PATH . "/includes/head.php";
                                 </div>
                                 <div class="col-6 col-md-auto">
                                     <select id="filterPeriodo" class="form-select form-select-sm bg-light text-dark fw-medium" style="min-width: 130px;">
-                                        <option value="mes" selected>📅 Este Mes</option>
+                                        <option value="ano" selected>📅 Este Año</option>
+                                        <option value="mes">📅 Este Mes</option>
                                         <option value="semana">📅 Esta Semana</option>
                                         <option value="hoy">📅 Hoy</option>
                                         <option value="ayer">📅 Ayer</option>
-                                        <option value="ano">📅 Este Año</option>
                                         <option value="">⚙️ Rango</option>
                                     </select>
                                 </div>
@@ -85,7 +85,56 @@ include_once ROOT_PATH . "/includes/head.php";
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body d-flex align-items-center p-3">
                                 <div class="bg-info-subtle text-info rounded-circle p-3 me-3"><i class="ti ti-box fs-2"></i></div>
-                                <div><h6 class="text-muted small text-uppercase fw-bold mb-1">Stock Disponible</h6><h3 class="mb-0 fw-bolder text-dark" id="kpiDisponibles">0</h3></div>
+                                <div>
+                                    <h6 class="text-muted small text-uppercase fw-bold mb-1">Stock no vendido</h6>
+                                    <h3 class="mb-0 fw-bolder text-dark" id="kpiDisponibles">0</h3>
+                                    <small class="text-muted" id="kpiDisponiblesDetalle">0 disponibles · 0 reservados</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4 g-3">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100 dashboard-kpi-progress">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <div>
+                                        <h6 class="text-muted small text-uppercase fw-bold mb-1">Avance real de ventas</h6>
+                                        <p class="text-muted small mb-0" id="kpiProgresoRifaLabel">Sin filtro de rifa</p>
+                                    </div>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Real</span>
+                                </div>
+                                <div class="d-flex align-items-end justify-content-between gap-3 mb-2">
+                                    <h2 class="mb-0 fw-bolder text-dark" id="kpiPorcentajeReal">0%</h2>
+                                    <small class="text-muted text-end" id="kpiProgresoDetalle">0 de 0 números</small>
+                                </div>
+                                <div class="progress dashboard-progress-real" style="height: 12px;">
+                                    <div id="kpiBarraReal" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <p class="text-muted small mb-0 mt-2">Porcentaje real vendido. No incluye el ajuste de la barra pública en Ajustes.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100 dashboard-kpi-transfers">
+                            <div class="card-body p-3 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <div>
+                                        <h6 class="text-muted small text-uppercase fw-bold mb-1">Transferencias pendientes</h6>
+                                        <p class="text-muted small mb-0">Por revisar y aprobar</p>
+                                    </div>
+                                    <div class="bg-warning-subtle text-warning rounded-circle p-2">
+                                        <i class="ti ti-building-bank fs-4"></i>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-end justify-content-between gap-3 mt-auto">
+                                    <h2 class="mb-0 fw-bolder text-dark" id="kpiTransferPendientes">0</h2>
+                                    <a href="transferencias.php" class="btn btn-sm btn-outline-primary">
+                                        <i class="ti ti-arrow-right me-1"></i> Revisar
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -185,21 +234,25 @@ include_once ROOT_PATH . "/includes/head.php";
                     <div class="card-header bg-white py-3 border-bottom">
                         <h5 class="card-title fw-bold mb-0">🚀 Últimas Transacciones</h5>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="ps-4">Código</th>
-                                    <th>Cliente</th>
-                                    <th>Rifa</th>
-                                    <th>Total</th>
-                                    <th class="text-end pe-4">Fecha</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tablaUltimasVentas">
-                                <tr><td colspan="5" class="text-center py-4 text-muted">Cargando...</td></tr>
-                            </tbody>
-                        </table>
+                    <div class="card-body p-0">
+                        <div class="table-responsive admin-table-cards-wrap admin-table-ventas-wrap">
+                            <table class="table table-hover align-middle mb-0 table-admin-cards table-ventas">
+                                <thead class="table-light sticky-top" style="z-index: 10;">
+                                    <tr>
+                                        <th class="ps-3">Cliente</th>
+                                        <th class="d-none d-lg-table-cell">Código</th>
+                                        <th class="d-none d-lg-table-cell">Nums/Rifa</th>
+                                        <th class="d-none d-lg-table-cell">Total</th>
+                                        <th class="d-none d-lg-table-cell">Método</th>
+                                        <th class="d-none d-lg-table-cell">Fecha</th>
+                                        <th class="text-end pe-3">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaUltimasVentas">
+                                    <tr><td colspan="7" class="text-center py-5 text-muted">Cargando…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -208,8 +261,20 @@ include_once ROOT_PATH . "/includes/head.php";
     </div>
 </div>
 
+<div class="modal fade" id="modalRecibo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Comprobante de Venta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="cuerpoRecibo"></div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <?php
-$extra_js = '<script src="' . ASSETS_URL . '/js/dashboard.js?v=2"></script>';
+$extra_js = '<script src="' . ASSETS_URL . '/js/admin-mobile.js?v=16"></script><script src="' . ASSETS_URL . '/js/dashboard.js?v=6"></script>';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>

@@ -4,6 +4,8 @@ $page_title = "Gestión de Números";
 include_once ROOT_PATH . "/includes/head.php";
 ?>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-sidebartype="full">
     <?php include_once ROOT_PATH . "/includes/sidebar.php"; ?>
 
@@ -53,14 +55,14 @@ include_once ROOT_PATH . "/includes/head.php";
 
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-                            <table class="table table-hover table-striped align-middle mb-0">
+                        <div class="table-responsive admin-table-cards-wrap admin-table-numeros-wrap">
+                            <table class="table table-hover align-middle mb-0 table-admin-cards table-numeros">
                                 <thead class="table-light sticky-top" style="z-index: 10;">
                                     <tr>
-                                        <th class="ps-5 text-start">Número</th>
-                                        <th class="text-center">Estado Actual</th>
-                                        <th class="text-center">Premium</th>
-                                        <th class="text-end pe-5">Acción</th>
+                                        <th class="ps-3 text-start">Número</th>
+                                        <th class="d-none d-lg-table-cell text-center">Estado</th>
+                                        <th class="d-none d-lg-table-cell text-center">Premium</th>
+                                        <th class="text-end pe-3">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bodyTablaNumeros">
@@ -84,6 +86,6 @@ include_once ROOT_PATH . "/includes/head.php";
 </div>
 
 <?php
-$extra_js = '<script src="' . ASSETS_URL . '/js/numeros.js"></script>';
+$extra_js = '<script src="' . ASSETS_URL . '/js/admin-mobile.js?v=20"></script><script src="' . ASSETS_URL . '/js/numeros.js?v=8"></script>';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>

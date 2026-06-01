@@ -4,20 +4,12 @@
 <script>
 async function shareVoucher() {
   const voucher = document.getElementById('voucherCapture');
-
-  // 🔒 Guardia principal
-  if (!voucher) {
-    console.warn('shareVoucher: voucherCapture no existe en esta vista');
-    return;
-  }
+  if (!voucher) return;
 
   const codigoEl = voucher.querySelector('[data-codigo]');
   const codigo = codigoEl?.dataset.codigo || 'comprobante';
 
-  if (typeof html2canvas === 'undefined') {
-    console.error('html2canvas no está cargado');
-    return;
-  }
+  if (typeof html2canvas === 'undefined') return;
 
   try {
     const canvas = await html2canvas(voucher, {
@@ -32,16 +24,13 @@ async function shareVoucher() {
       const fileName = `${codigo}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
-      // 📱 MOBILE → Share nativo
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: 'Comprobante de venta',
           text: 'Aquí está tu comprobante'
         });
-      }
-      // 🖥️ DESKTOP → Descarga
-      else {
+      } else {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -52,9 +41,8 @@ async function shareVoucher() {
         URL.revokeObjectURL(url);
       }
     });
-
   } catch (err) {
-    console.error('Error al generar comprobante:', err);
+    return;
   }
 }
 </script>

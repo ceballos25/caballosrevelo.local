@@ -1,67 +1,154 @@
-// ============================
-// STATE GLOBAL
-// ============================
 let SETTINGS = {};
 let SETTINGS_ROWS = [];
 let SETTINGS_LOADED = false;
 let SETTINGS_PROMISE = null;
 
-/**
- * Claves conocidas: título, ayuda y tipo de control (toggle = encendido/apagado → 1/0 en BD).
- */
 const SETTING_UI_META = {
-    web_compras_habilitadas: {
-        title: 'Compras en la página web',
-        help: 'Encendido: los visitantes pueden pagar (PSE, OpenPay) y subir comprobante. Apagado: pueden navegar y consultar números, pero no comprar.',
+    maintenance_mode: {
+        title: 'Modo mantenimiento',
+        help: 'Actívalo cuando quieras cerrar la página al público por un rato. Tú y tu equipo podéis seguir entrando con normalidad.',
         type: 'toggle',
+        section: 'web',
+    },
+    maintenance_message: {
+        title: 'Mensaje para visitantes',
+        help: 'Lo que verán quienes entren mientras el sitio está en mantenimiento.',
+        placeholder: 'Ej: Estamos actualizando la página. Volvemos pronto.',
+        type: 'textarea',
+        section: 'web',
+    },
+    web_compras_habilitadas: {
+        title: 'Permitir compras en la web',
+        help: 'Encendido: pueden pagar en línea y subir comprobante. Apagado: solo ven información y consultan números, sin comprar.',
+        type: 'toggle',
+        section: 'web',
     },
     web_mensaje_compras_bloqueadas: {
-        title: 'Mensaje cuando las compras están apagadas',
-        help: 'Texto que aparece en la franja roja de aviso en la web. Déjalo vacío para usar el mensaje por defecto.',
+        title: 'Aviso cuando las compras están pausadas',
+        help: 'Texto de la franja roja en la web. Si lo dejas vacío, usamos un mensaje genérico.',
+        placeholder: 'Ej: Las compras en línea están pausadas por ahora.',
         type: 'textarea',
+        section: 'web',
     },
     web_id_raffle: {
-        title: 'Rifa mostrada en la web',
-        help: 'ID de la rifa activa en la landing: inventario, progreso de ventas y bendecidos. Debe coincidir con la rifa que estás vendiendo.',
+        title: 'Rifa que se muestra en la página principal',
+        help: 'Se actualiza solo al crear o activar una rifa. Si pausas la rifa actual, pasa a la última rifa activa. El ID lo ves en Rifas.',
+        placeholder: 'Ej: 1',
         type: 'text',
+        section: 'web',
     },
     barra: {
-        title: 'Barra de progreso — ajuste (%)',
-        help: '0 = solo % real de ventas al cargar la página. Mayor que 0 = se suma a ese % (vuelve a cargar la web para ver el dato nuevo). Máximo 100%.',
+        title: 'Ajuste de la barra de progreso',
+        help: 'Déjalo en 0 para mostrar el avance real. Solo cámbialo si necesitas sumar un poco al porcentaje visible (máx. 100). Recarga la web para verlo.',
+        placeholder: '0',
         type: 'text',
+        section: 'web',
     },
     whatsapp: {
-        title: 'WhatsApp (número)',
-        help: 'Solo dígitos, sin + ni espacios. Se usa para armar el enlace wa.me si no hay URL completa.',
+        title: 'Número de WhatsApp',
+        help: 'Solo números, con indicativo. Ejemplo Colombia: 573001234567',
+        placeholder: '573001234567',
         type: 'text',
+        section: 'contacto',
     },
     whatsapp_chat_url: {
-        title: 'WhatsApp (URL completa)',
-        help: 'Si está llena, tiene prioridad sobre el número. Ejemplo: https://wa.me/57…',
+        title: 'Enlace de WhatsApp (opcional)',
+        help: 'Si tienes un enlace wa.me completo, pégalo aquí. Tiene prioridad sobre el número de arriba.',
+        placeholder: 'https://wa.me/573001234567',
         type: 'text',
+        section: 'contacto',
     },
     social_instagram_url: {
         title: 'Instagram',
-        help: 'URL del perfil o enlace público de Instagram.',
+        help: 'Enlace a tu perfil o página de Instagram.',
+        placeholder: 'https://instagram.com/tu_cuenta',
         type: 'text',
+        section: 'contacto',
     },
     social_facebook_url: {
         title: 'Facebook',
-        help: 'URL de la página o perfil de Facebook.',
+        help: 'Enlace a tu página de Facebook.',
+        placeholder: 'https://facebook.com/tu_pagina',
         type: 'text',
+        section: 'contacto',
     },
     numeros_bendecidos: {
-        title: 'Números bendecidos (legacy)',
-        help: 'Lista separada por comas. Si ya usas solo premium en tickets, puede quedar vacía.',
+        title: 'Números bendecidos en la web',
+        help: 'Lista separada por comas, si aún usas esta función. Si los premios los marcas en los tickets, puede quedar vacío.',
+        placeholder: '12, 45, 108',
         type: 'text',
+        section: 'otros',
+    },
+    pricing_tiered_enabled: {
+        title: 'Precios por tramos (web)',
+        help: 'Encendido: 1.º número, 2.º número y del 3.º en adelante con precios distintos.',
+        type: 'toggle',
+        section: 'precios',
+    },
+    pricing_first_unit: {
+        title: 'Precio 1.º número (COP)',
+        help: 'Valor del primer número. Ej: 65000',
+        placeholder: '65000',
+        type: 'text',
+        section: 'precios',
+    },
+    pricing_tier1_qty: {
+        title: 'Cantidad precio normal (legacy)',
+        help: 'Obsoleto: ya no se usa. Precios por posición (1.º, 2.º, 3+).',
+        placeholder: '2',
+        type: 'text',
+        section: 'precios',
+    },
+    pricing_tier1_unit: {
+        title: 'Precio 2.º número (COP)',
+        help: 'Valor del segundo número. Ej: 60000',
+        placeholder: '60000',
+        type: 'text',
+        section: 'precios',
+    },
+    pricing_tier2_unit: {
+        title: 'Precio 3 o más números (COP)',
+        help: 'Valor por número cuando compran 3 o más (todos a este precio). Ej: 55000',
+        placeholder: '55000',
+        type: 'text',
+        section: 'precios',
     },
 };
 
+const SETTING_SECTIONS = [
+    {
+        id: 'web',
+        title: 'Página web y ventas',
+        subtitle: 'Qué ven los visitantes y si pueden comprar en línea.',
+    },
+    {
+        id: 'precios',
+        title: 'Precios por cantidad',
+        subtitle: '1.º, 2.º y del 3.º en adelante (web y checkout).',
+    },
+    {
+        id: 'contacto',
+        title: 'Contacto y redes',
+        subtitle: 'WhatsApp e iconos de redes en la página principal.',
+    },
+    {
+        id: 'otros',
+        title: 'Otros ajustes',
+        subtitle: 'Opciones adicionales. Si no estás seguro, déjalas como están.',
+    },
+];
+
 const SETTING_UI_ORDER = [
+    'maintenance_mode',
+    'maintenance_message',
     'web_compras_habilitadas',
     'web_mensaje_compras_bloqueadas',
     'web_id_raffle',
     'barra',
+    'pricing_tiered_enabled',
+    'pricing_first_unit',
+    'pricing_tier1_unit',
+    'pricing_tier2_unit',
     'whatsapp',
     'whatsapp_chat_url',
     'social_instagram_url',
@@ -69,24 +156,15 @@ const SETTING_UI_ORDER = [
     'numeros_bendecidos',
 ];
 
-// ============================
-// INIT GLOBAL
-// ============================
 document.addEventListener('DOMContentLoaded', async () => {
+    initSettingsAlerts();
 
-    // 🔥 Cargar settings UNA sola vez
-    await cargarSettingsGlobal();
-
-    // 🔥 Solo renderizar si existe la vista settings
     if (document.getElementById('settingsContainer')) {
+        await cargarSettingsGlobal();
         renderSettingsFromGlobal();
     }
-
 });
 
-// ============================
-// HELPERS
-// ============================
 function escapeHtml(text) {
     return String(text ?? '')
         .replace(/&/g, "&amp;")
@@ -96,13 +174,87 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
+function initSettingsAlerts() {
+    if (typeof alertify === 'undefined') return;
+    alertify.set('notifier', 'position', 'top-center');
+    alertify.set('notifier', 'delay', 5);
+}
+
+function settingLabelForKey(key) {
+    return metaForKey(key).title || key;
+}
+
+function showSettingsToast(type, message) {
+    initSettingsAlerts();
+    const msg = String(message ?? '').trim();
+    if (!msg) return;
+
+    if (typeof alertify !== 'undefined') {
+        if (typeof alertify.dismissAll === 'function') {
+            alertify.dismissAll();
+        }
+        if (type === 'error') {
+            alertify.error(msg);
+        } else {
+            alertify.success(msg);
+        }
+        return;
+    }
+
+    if (type === 'error' && typeof toastError === 'function') {
+        toastError(msg);
+        return;
+    }
+    if (type !== 'error' && typeof toastSuccess === 'function') {
+        toastSuccess(msg);
+    }
+}
+
+function notifySettingSaved(label) {
+    const name = String(label ?? '').trim();
+    const msg = name ? `✓ Guardado: ${name}` : '✓ Cambio guardado correctamente';
+    showSettingsToast('success', msg);
+}
+
+function notifySettingError(message) {
+    const msg = String(message ?? '').trim() || 'No se pudo guardar. Revisa los datos e intenta de nuevo.';
+    showSettingsToast('error', `✕ ${msg}`);
+}
+
+function flashSettingRow(key) {
+    const row = document.querySelector(`.settings-row[data-setting-key="${CSS.escape(String(key))}"]`);
+    if (!row) return;
+    row.classList.remove('settings-row--saved');
+    void row.offsetWidth;
+    row.classList.add('settings-row--saved');
+    window.setTimeout(() => row.classList.remove('settings-row--saved'), 1800);
+}
+
 function getSetting(key, defaultValue = null) {
     return SETTINGS[key] ?? defaultValue;
 }
 
-// ============================
-// FETCH BASE
-// ============================
+function settingsCsrfToken() {
+    if (typeof adminCsrfToken === 'function') {
+        return adminCsrfToken();
+    }
+    if (window.PUBLIC_CSRF_TOKEN) {
+        return window.PUBLIC_CSRF_TOKEN;
+    }
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? (meta.getAttribute('content') || '') : '';
+}
+
+function settingsAppendCsrf(fd) {
+    if (fd instanceof FormData && !fd.has('csrf_token')) {
+        const token = settingsCsrfToken();
+        if (token) {
+            fd.append('csrf_token', token);
+        }
+    }
+    return fd;
+}
+
 async function fetchSettings(action, extra = {}) {
 
     const fd = new FormData();
@@ -110,17 +262,37 @@ async function fetchSettings(action, extra = {}) {
 
     Object.entries(extra).forEach(([k, v]) => fd.append(k, v));
 
+    const writeActions = ['actualizar', 'crear', 'eliminar'];
+    if (writeActions.includes(action)) {
+        settingsAppendCsrf(fd);
+    }
+
+    const token = settingsCsrfToken();
     const res = await fetch('/front/ajax/settings.ajax.php', {
         method: 'POST',
-        body: fd
+        body: fd,
+        credentials: 'same-origin',
+        headers: token ? { 'X-CSRF-Token': token } : {},
     });
 
-    return res.json();
+    const text = await res.text();
+    let data;
+    try {
+        data = JSON.parse(text.trim());
+    } catch {
+        throw new Error('El servidor respondió de forma inesperada. Recarga la página.');
+    }
+
+    if (!data.success) {
+        if (data.code === 'csrf_invalid') {
+            throw new Error(data.message || 'Sesión expirada. Recarga la página (F5) e intenta de nuevo.');
+        }
+        throw new Error(data.message || 'No se pudo completar la operación.');
+    }
+
+    return data;
 }
 
-// ============================
-// CARGAR GLOBAL (SINGLE SOURCE)
-// ============================
 async function cargarSettingsGlobal(force = false) {
 
     if (force) {
@@ -138,8 +310,6 @@ async function cargarSettingsGlobal(force = false) {
 
             const data = await fetchSettings('obtener');
 
-            if (!data.success) throw new Error("Error obteniendo settings");
-
             SETTINGS = {};
             SETTINGS_ROWS = Array.isArray(data.data) ? data.data : [];
 
@@ -152,7 +322,11 @@ async function cargarSettingsGlobal(force = false) {
             return SETTINGS;
 
         } catch (e) {
-            console.error("Error cargando settings:", e);
+            if (typeof notifySettingError === 'function') {
+                notifySettingError(e instanceof Error ? e.message : 'Error cargando ajustes');
+            } else if (typeof adminNotifyError === 'function') {
+                adminNotifyError(e instanceof Error ? e.message : 'Error cargando ajustes');
+            }
             return {};
         }
 
@@ -166,24 +340,101 @@ function isSettingTruthyValue(val) {
     return !['0', 'false', 'no', 'off'].includes(v);
 }
 
-// ============================
-// READY (SIN setInterval)
-// ============================
 function onSettingsReady(callback) {
     cargarSettingsGlobal().then(callback);
 }
 
-// ============================
-// RENDER SETTINGS (ADMIN UI)
-// ============================
 function metaForKey(key) {
     return (
         SETTING_UI_META[key] || {
-            title: key,
-            help: 'Parámetro avanzado. El valor se guarda tal cual en la base de datos.',
+            title: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            help: 'Opción personalizada. Si no la reconoces, consulta antes de cambiarla.',
             type: 'text',
+            section: 'avanzado',
         }
     );
+}
+
+function isKnownSettingKey(key) {
+    return Object.prototype.hasOwnProperty.call(SETTING_UI_META, key);
+}
+
+function renderSettingControl(key, meta, val) {
+    if (meta.type === 'toggle') {
+        const checked = isSettingTruthyValue(val) ? 'checked' : '';
+        return `
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="toggle-${escapeHtml(key)}"
+                    data-key="${escapeHtml(key)}"
+                    data-boolean-toggle="1"
+                    ${checked}
+                    onchange="guardarToggleSetting('${escapeHtml(key)}', this)">
+                <label class="form-check-label small" for="toggle-${escapeHtml(key)}">
+                    <span class="text-muted toggle-state-label" data-for-key="${escapeHtml(key)}"></span>
+                </label>
+            </div>
+        `;
+    }
+    if (meta.type === 'textarea') {
+        const ph = meta.placeholder ? ` placeholder="${escapeHtml(meta.placeholder)}"` : '';
+        return `
+            <textarea class="form-control form-control-sm" rows="2" data-key="${escapeHtml(key)}"${ph}>${escapeHtml(val)}</textarea>
+        `;
+    }
+    const ph = meta.placeholder ? ` placeholder="${escapeHtml(meta.placeholder)}"` : '';
+    return `
+        <input type="text" class="form-control form-control-sm" data-key="${escapeHtml(key)}"
+            value="${escapeHtml(val)}"${ph}>
+    `;
+}
+
+function renderSettingRow(s, options = {}) {
+    const { showDelete = false } = options;
+    const key = s.key_setting;
+    const meta = metaForKey(key);
+    const val = s.value_setting ?? '';
+    const id = s.id_setting;
+    const showSave = meta.type !== 'toggle';
+    const known = isKnownSettingKey(key);
+
+    return `
+    <div class="settings-row row g-3 align-items-start" data-setting-key="${escapeHtml(key)}">
+        <div class="col-lg-4">
+            <div class="settings-title">${escapeHtml(meta.title)}</div>
+            ${known ? '' : `<div class="settings-code text-muted small mb-1"><span class="badge bg-light text-muted border fw-normal">${escapeHtml(key)}</span></div>`}
+            <p class="settings-help mb-0">${escapeHtml(meta.help)}</p>
+        </div>
+        <div class="col-lg-5">
+            ${renderSettingControl(key, meta, val)}
+        </div>
+        <div class="col-lg-3 text-lg-end">
+            ${showSave ? `
+                <button type="button" class="btn btn-sm btn-success btn-save-row"
+                    onclick="guardarIndividualDesdeUI('${escapeHtml(key)}', this)">
+                    <i class="ti ti-device-floppy me-1"></i> Guardar
+                </button>
+            ` : `
+                <span class="small text-success"><i class="ti ti-bolt me-1"></i>Guardado automático</span>
+            `}
+            ${showDelete ? `
+                <button type="button" class="btn btn-sm btn-outline-danger ms-lg-2 mt-2 mt-lg-0 d-inline-block"
+                    title="Eliminar"
+                    onclick="eliminarSetting(${Number(id)})"
+                    ${['precio_ticket', 'max_tickets', 'min_tickets'].includes(key) ? 'disabled' : ''}>
+                    <i class="ti ti-trash"></i>
+                </button>
+            ` : ''}
+        </div>
+    </div>
+    `;
+}
+
+function renderSettingsSectionHeader(section) {
+    return `
+    <div class="settings-section-header">
+        <h6 class="settings-section-title mb-0">${escapeHtml(section.title)}</h6>
+        <p class="settings-section-subtitle mb-0">${escapeHtml(section.subtitle)}</p>
+    </div>`;
 }
 
 function sortSettingsRows(rows) {
@@ -211,77 +462,38 @@ function renderSettingsFromGlobal() {
     if (!container) return;
 
     const rows = sortSettingsRows([...SETTINGS_ROWS]);
+    const rowsByKey = Object.fromEntries(rows.map((r) => [r.key_setting, r]));
 
     if (!rows.length) {
-        container.innerHTML = `<div class="text-center py-5 text-muted">Sin configuración. Crea la primera clave abajo.</div>`;
+        container.innerHTML = `<div class="text-center py-5 text-muted">No hay opciones configuradas todavía.</div>`;
         return;
     }
 
-    container.innerHTML = rows.map((s) => {
-        const key = s.key_setting;
-        const meta = metaForKey(key);
-        const val = s.value_setting ?? '';
-        const id = s.id_setting;
+    let html = '';
 
-        let controlHtml = '';
+    SETTING_SECTIONS.forEach((section) => {
+        const sectionRows = SETTING_UI_ORDER
+            .filter((k) => (SETTING_UI_META[k]?.section || '') === section.id)
+            .map((k) => rowsByKey[k])
+            .filter(Boolean);
 
-        if (meta.type === 'toggle') {
-            const checked = isSettingTruthyValue(val) ? 'checked' : '';
-            controlHtml = `
-                <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" role="switch" id="toggle-${escapeHtml(key)}"
-                        data-key="${escapeHtml(key)}"
-                        data-boolean-toggle="1"
-                        ${checked}
-                        onchange="guardarToggleSetting('${escapeHtml(key)}', this)">
-                    <label class="form-check-label small" for="toggle-${escapeHtml(key)}">
-                        <span class="text-muted toggle-state-label" data-for-key="${escapeHtml(key)}"></span>
-                    </label>
-                </div>
-            `;
-        } else if (meta.type === 'textarea') {
-            controlHtml = `
-                <textarea class="form-control form-control-sm" rows="2" data-key="${escapeHtml(key)}"
-                    placeholder="Opcional">${escapeHtml(val)}</textarea>
-            `;
-        } else {
-            controlHtml = `
-                <input type="text" class="form-control form-control-sm" data-key="${escapeHtml(key)}"
-                    value="${escapeHtml(val)}">
-            `;
-        }
+        if (!sectionRows.length) return;
 
-        const showSave = meta.type !== 'toggle';
+        html += renderSettingsSectionHeader(section);
+        html += sectionRows.map((s) => renderSettingRow(s)).join('');
+    });
 
-        return `
-        <div class="settings-row row g-3 align-items-start" data-setting-key="${escapeHtml(key)}">
-            <div class="col-lg-4">
-                <div class="settings-title">${escapeHtml(meta.title)}</div>
-                <div class="settings-code text-muted small mb-1"><code>${escapeHtml(key)}</code></div>
-                <p class="settings-help mb-0">${escapeHtml(meta.help)}</p>
-            </div>
-            <div class="col-lg-5">
-                ${controlHtml}
-            </div>
-            <div class="col-lg-3 text-lg-end">
-                ${showSave ? `
-                    <button type="button" class="btn btn-sm btn-success btn-save-row"
-                        onclick="guardarIndividualDesdeUI('${escapeHtml(key)}', this)">
-                        <i class="ti ti-device-floppy me-1"></i> Guardar
-                    </button>
-                ` : `
-                    <span class="small text-success"><i class="ti ti-bolt me-1"></i>Se guarda al cambiar</span>
-                `}
-                <button type="button" class="btn btn-sm btn-outline-danger ms-lg-2 mt-2 mt-lg-0 d-inline-block"
-                    title="Eliminar clave"
-                    onclick="eliminarSetting(${Number(id)})"
-                    ${['precio_ticket', 'max_tickets', 'min_tickets'].includes(key) ? 'disabled' : ''}>
-                    <i class="ti ti-trash"></i>
-                </button>
-            </div>
-        </div>
-        `;
-    }).join('');
+    const knownSet = new Set(SETTING_UI_ORDER);
+    const extraRows = rows.filter((r) => !knownSet.has(r.key_setting));
+    if (extraRows.length) {
+        html += renderSettingsSectionHeader({
+            title: 'Opciones adicionales',
+            subtitle: 'Parámetros personalizados. Elimínalos solo si sabes para qué sirven.',
+        });
+        html += extraRows.map((s) => renderSettingRow(s, { showDelete: true })).join('');
+    }
+
+    container.innerHTML = html;
 
     rows.forEach((s) => {
         if (metaForKey(s.key_setting).type === 'toggle') {
@@ -294,41 +506,72 @@ function updateToggleLabel(key) {
     const el = document.querySelector(`.toggle-state-label[data-for-key="${key}"]`);
     const input = document.getElementById(`toggle-${key}`);
     if (!el || !input) return;
-    el.textContent = input.checked ? 'Encendido (compras permitidas)' : 'Apagado (solo navegación, sin compras)';
+    const on = input.checked;
+    if (key === 'maintenance_mode') {
+        el.textContent = on ? 'Sitio cerrado al público' : 'Sitio abierto al público';
+    } else if (key === 'web_compras_habilitadas') {
+        el.textContent = on ? 'Compras activas' : 'Compras pausadas';
+    } else {
+        el.textContent = on ? 'Encendido' : 'Apagado';
+    }
+}
+
+function setSaveButtonLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) {
+        btn.dataset.prevHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Guardando…';
+    } else {
+        btn.disabled = false;
+        if (btn.dataset.prevHtml) {
+            btn.innerHTML = btn.dataset.prevHtml;
+            delete btn.dataset.prevHtml;
+        }
+    }
 }
 
 async function guardarToggleSetting(key, inputEl) {
     const v = inputEl.checked ? '1' : '0';
+    const label = settingLabelForKey(key);
     updateToggleLabel(key);
+    inputEl.disabled = true;
     try {
         await actualizarSettings({ [key]: v });
-        alertify.success('Listo');
+        notifySettingSaved(label);
+        flashSettingRow(key);
     } catch (e) {
-        alertify.error(e.message || 'Error');
+        notifySettingError(e.message);
         inputEl.checked = !inputEl.checked;
         updateToggleLabel(key);
+    } finally {
+        inputEl.disabled = false;
     }
 }
 
-// ============================
-// ACTUALIZAR (GLOBAL)
-// ============================
 async function actualizarSettings(payload) {
 
-    const data = await fetchSettings('actualizar', payload);
-
-    if (!data.success) {
-        throw new Error(data.message);
-    }
-
+    await fetchSettings('actualizar', payload);
     await cargarSettingsGlobal(true);
 
     return true;
 }
 
-// ============================
-// GUARDAR INDIVIDUAL (UI)
-// ============================
+function syncSettingValueInDom(key, value) {
+    const row = document.querySelector(`.settings-row[data-setting-key="${CSS.escape(String(key))}"]`);
+    if (!row) return;
+    const input = row.querySelector('[data-key]');
+    if (!input) return;
+    if (input.type === 'checkbox') {
+        input.checked = isSettingTruthyValue(value);
+        updateToggleLabel(key);
+    } else if (input.tagName === 'TEXTAREA') {
+        input.value = value ?? '';
+    } else {
+        input.value = value ?? '';
+    }
+}
+
 async function guardarIndividualDesdeUI(key, btn) {
 
     const row = btn.closest('.settings-row');
@@ -339,25 +582,26 @@ async function guardarIndividualDesdeUI(key, btn) {
         ? (input.checked ? '1' : '0')
         : input.value.trim();
 
+    setSaveButtonLoading(btn, true);
+
     try {
 
         await actualizarSettings({ [key]: value });
 
-        alertify.success("Actualizado");
-        if (document.getElementById('settingsContainer')) {
-            renderSettingsFromGlobal();
-        }
+        syncSettingValueInDom(key, value);
+        notifySettingSaved(settingLabelForKey(key));
+        flashSettingRow(key);
 
     } catch (e) {
-        alertify.error(e.message || "Error");
+        notifySettingError(e.message || e);
+    } finally {
+        setSaveButtonLoading(btn, false);
     }
 }
 
-// ============================
-// GUARDAR MASIVO (UI)
-// ============================
 async function guardarSettings() {
 
+    const btn = document.querySelector('button[onclick="guardarSettings()"]');
     const inputs = document.querySelectorAll('[data-key]');
     const payload = {};
 
@@ -369,30 +613,31 @@ async function guardarSettings() {
         }
     });
 
+    setSaveButtonLoading(btn, true);
+
     try {
 
         await actualizarSettings(payload);
 
-        alertify.success("Configuración actualizada");
+        notifySettingSaved('Todos los ajustes');
         if (document.getElementById('settingsContainer')) {
             renderSettingsFromGlobal();
         }
 
     } catch (e) {
-        alertify.error(e.message || "Error");
+        notifySettingError(e.message);
+    } finally {
+        setSaveButtonLoading(btn, false);
     }
 }
 
-// ============================
-// CREAR
-// ============================
 async function crearSetting() {
 
     let key = document.getElementById('newKey').value.trim();
     const value = document.getElementById('newValue').value.trim();
 
     if (!key) {
-        alertify.error("Indica el nombre de la clave");
+        notifySettingError('Escribe un nombre para la opción');
         return;
     }
 
@@ -400,14 +645,12 @@ async function crearSetting() {
 
     try {
 
-        const data = await fetchSettings('crear', {
+        await fetchSettings('crear', {
             key_setting: key,
             value_setting: value
         });
 
-        if (!data.success) throw new Error(data.message);
-
-        alertify.success("Setting creado");
+        notifySettingSaved('Nueva opción');
 
         document.getElementById('newKey').value = '';
         document.getElementById('newValue').value = '';
@@ -416,70 +659,48 @@ async function crearSetting() {
         renderSettingsFromGlobal();
 
     } catch (e) {
-        alertify.error(e.message || "Error");
+        notifySettingError(e.message);
     }
 }
 
-// ============================
-// ELIMINAR
-// ============================
 async function eliminarSetting(id) {
 
-    if (!confirm("¿Eliminar este setting?")) return;
+    if (!confirm('¿Eliminar esta opción?')) return;
 
     try {
 
-        const data = await fetchSettings('eliminar', { id_setting: id });
+        await fetchSettings('eliminar', { id_setting: id });
 
-        if (!data.success) throw new Error(data.message);
-
-        alertify.success("Eliminado");
+        notifySettingSaved('Opción eliminada');
 
         await cargarSettingsGlobal(true);
         renderSettingsFromGlobal();
 
     } catch (e) {
-        alertify.error(e.message || "Error al eliminar");
+        notifySettingError(e.message || 'Error al eliminar');
     }
 }
 
-// ============================
-// EXPORT GLOBAL
-// ============================
 window.getSetting = getSetting;
 window.onSettingsReady = onSettingsReady;
 window.cargarSettingsGlobal = cargarSettingsGlobal;
+
+function seedPublicSettings(map) {
+    if (!map || typeof map !== 'object') {
+        return;
+    }
+    Object.assign(SETTINGS, map);
+    SETTINGS_LOADED = true;
+    SETTINGS_PROMISE = Promise.resolve(SETTINGS);
+}
+
+window.seedPublicSettings = seedPublicSettings;
 window.guardarToggleSetting = guardarToggleSetting;
+window.guardarIndividualDesdeUI = guardarIndividualDesdeUI;
+window.guardarSettings = guardarSettings;
+window.crearSetting = crearSetting;
+window.eliminarSetting = eliminarSetting;
 
-onSettingsReady(() => {
-
-    // INSTAGRAM
-    aplicarRedSocial(
-        '.social-instagram',
-        getSetting('social_instagram_url')
-    );
-
-    // FACEBOOK
-    aplicarRedSocial(
-        '.social-facebook',
-        getSetting('social_facebook_url')
-    );
-
-    // WHATSAPP
-    const whatsappUrl = getSetting('whatsapp_chat_url');
-    const whatsappNum = getSetting('whatsapp');
-
-    let finalWhatsappUrl = whatsappUrl || 
-        (whatsappNum ? `https://wa.me/${whatsappNum}?text=Hola` : null);
-
-    aplicarRedSocial('.social-whatsapp', finalWhatsappUrl);
-
-});
-
-/**
- * Evita artefactos IEEE 754 al sumar % backend + boost (ej. 40.760000000000005%).
- * Coincide con el redondeo a 2 decimales del backend (NumerosController).
- */
 function redondearPorcentajeUIPct(n, decimales = 2) {
     if (!Number.isFinite(n)) {
         return 0;
@@ -512,7 +733,6 @@ function obtenerPorcentajeFinal(porcentajeBackend) {
     return base + barraSetting;
 }
 
-/** Valor numérico del ajuste `barra` en settings (case-insensitive por clave). */
 function getBarraBoostRaw() {
     if (typeof getSetting !== 'function') {
         return null;
@@ -537,36 +757,41 @@ function actualizarBarraProgreso(porcentajeBackend) {
     const clamped = Math.min(Math.max(porcentaje, 0), 100);
     const porcentajeFinal = redondearPorcentajeUIPct(clamped, 2);
 
-    const barra = document.getElementById('barraProgreso');
     const texto = document.getElementById('porcentajeTexto');
+    if (texto) {
+        texto.innerText = porcentajeFinal + '%';
+    }
 
-    if (!barra || !texto) return;
+    const barra = document.getElementById('barraProgreso');
+    if (barra) {
+        barra.style.width = porcentajeFinal + '%';
+    }
 
-    barra.style.width = porcentajeFinal + '%';
-    texto.innerText = porcentajeFinal + '%';
+    const barraCarrera = document.getElementById('barraProgresoCarrera');
+    if (barraCarrera) {
+        barraCarrera.style.width = porcentajeFinal + '%';
+    }
+
+    const caballo = document.getElementById('caballoProgreso');
+    if (caballo) {
+        caballo.style.left = porcentajeFinal + '%';
+    }
 }
 
 let porcentajeBackendGlobal = 0;
 
-// Cuando cargas la rifa (ej: desde API)
 function cargarDatosRifa(data) {
     porcentajeBackendGlobal = Number(data?.porcentaje) || 0;
 
-    // Esperar settings antes de pintar
     onSettingsReady(() => {
         actualizarBarraProgreso(porcentajeBackendGlobal);
     });
 }
 
-onSettingsReady(() => {
-
-});
-
 async function initBarraProgreso() {
 
     await cargarSettingsGlobal();
 
-    // ⚠️ TEMPORAL (hasta que hagamos el endpoint)
     const porcentajeBackend = 25;
 
     actualizarBarraProgreso(porcentajeBackend);

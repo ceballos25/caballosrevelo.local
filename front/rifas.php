@@ -41,7 +41,7 @@ include_once ROOT_PATH . "/includes/head.php";
 
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <div class="table-responsive admin-table-desktop" style="max-height: 600px; overflow-y: auto;">
                             <table class="table table-hover table-striped align-middle mb-0">
                                 <thead class="table-light sticky-top">
                                     <tr>
@@ -51,7 +51,6 @@ include_once ROOT_PATH . "/includes/head.php";
                                         <th>Cifras</th>
                                         <th>Precio</th>
                                         <th>Fecha Sorteo</th>
-                                        <th>Promociones</th>
                                         <th>Estado</th>
                                         <th>Acciones</th>
                                     </tr>
@@ -61,6 +60,7 @@ include_once ROOT_PATH . "/includes/head.php";
                                 </tbody>
                             </table>
                         </div>
+                        <div class="admin-cards-mobile admin-cards-mobile--rifas p-3" id="rifasMobile"></div>
                     </div>
                     <div class="card-footer bg-white border-top py-3">
                         <div class="d-flex justify-content-between align-items-center">
@@ -86,20 +86,21 @@ include_once ROOT_PATH . "/includes/head.php";
                     <input type="hidden" id="rifaId">
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Título del Sorteo <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="titulo" required>
+                        <input type="text" class="form-control" id="titulo" required placeholder="Ej: ¡Gana una **Hermosa Yegua**!">
+                        <small class="text-muted">Usa **texto** para resaltar en dorado en la landing (también puedes usar |texto|).</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Descripción / Premio <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="descripcion" rows="2" required></textarea>
                     </div>
-                    <div class="mb-3 d-none">
-                        <label class="form-label small fw-bold">Promociones</label>
-                        <input type="text" class="form-control" id="promociones">
-                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label small fw-bold">Precio Boleta <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="precio" required>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="text" class="form-control" id="precio" inputmode="numeric" autocomplete="off" placeholder="0" required>
+                            </div>
+                            <small class="text-muted">Escribe solo números; se formatea automático (ej. 1000 → 1.000)</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label small fw-bold">Cifras <span class="text-danger">*</span></label>
@@ -114,6 +115,13 @@ include_once ROOT_PATH . "/includes/head.php";
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Fecha y Hora Sorteo <span class="text-danger">*</span></label>
                         <input type="datetime-local" class="form-control" id="fecha" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Tipo de asignación</label>
+                        <select class="form-select" id="tipoRifa">
+                            <option value="automatic">Automática (paquetes)</option>
+                            <option value="manual">Manual (el cliente elige números)</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Estado</label>
@@ -149,6 +157,6 @@ include_once ROOT_PATH . "/includes/head.php";
 </div>
 
 <?php 
-$extra_js = '<script src="' . ASSETS_URL . '/js/rifas.js?v=2"></script>';
+$extra_js = '<script src="' . ASSETS_URL . '/js/money-cop.js?v=1"></script><script src="' . ASSETS_URL . '/js/admin-mobile.js?v=16"></script><script src="' . ASSETS_URL . '/js/rifas.js?v=13"></script>';
 include_once ROOT_PATH . "/includes/footer.php"; 
 ?>

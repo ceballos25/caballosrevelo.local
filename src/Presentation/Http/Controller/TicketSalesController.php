@@ -25,10 +25,11 @@ final class TicketSalesController
         'numeros_vendidos',
         'obtener_admins',
         'anular',
+        'anular_parcial',
         'obtener_origenes',
     ];
 
-    private const CSRF_PROTECTED_ACTIONS = ['anular'];
+    private const CSRF_PROTECTED_ACTIONS = ['anular', 'anular_parcial'];
 
     /** Acciones invocables sin sesión de administrador (sitio público). */
     private const PUBLIC_ACTIONS = [
@@ -47,6 +48,7 @@ final class TicketSalesController
         'numeros_vendidos' => ['admin', 'administrador', 'vendedor', 'superadmin'],
         'obtener_admins' => ['admin', 'administrador', 'superadmin'],
         'anular' => ['admin', 'administrador', 'superadmin'],
+        'anular_parcial' => ['admin', 'administrador', 'superadmin'],
         'obtener_origenes' => ['admin', 'administrador', 'superadmin'],
     ];
 
@@ -84,6 +86,10 @@ final class TicketSalesController
     {
         $clean = [];
         foreach ($payload as $key => $value) {
+            if ($key === 'ticket_ids' && is_array($value)) {
+                $clean['ticket_ids'] = array_map('intval', $value);
+                continue;
+            }
             if (is_array($value)) {
                 continue;
             }

@@ -1,36 +1,44 @@
 <div id="voucherCapture">
-    <div style="max-width:560px;margin:22px auto;font-family:'Segoe UI',Arial,sans-serif;background:#f9f9f9;padding:14px;border-radius:18px;border:1px solid #eee;">
+    <div style="max-width:520px;margin:14px auto;font-family:Montserrat,'Segoe UI',Arial,sans-serif;background:#f7f7f7;padding:10px;border-radius:14px;border:1px solid #e5e5e5;">
 
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation" style="
             background:#ffffff;
-            border-radius:16px;
+            border-radius:12px;
             overflow:hidden;
-            color:#333333;
+            color:#0D0D0D;
             border-collapse:collapse;
-            border:1px solid #00ff00;
-            box-shadow:0 8px 32px rgba(0,255,0,0.08);
+            border:1px solid #e5e5e5;
+            border-top:3px solid #ffc107;
+            box-shadow:0 4px 16px rgba(13,13,13,0.06);
         ">
 
             <tr>
-                <td style="padding:16px 20px;border-bottom:2px solid #00ff00;background:#ffffff;">
-                    <table width="100%">
+                <td style="padding:10px 14px;border-bottom:1px solid #eeeeee;background:#ffffff;">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation" style="border-collapse:collapse;">
                         <tr>
-                            <td align="left">
-                                <img src="https://eldiadetusuerte.com/assets/images/logos/logo-blanco.jpg" width="120px">
-                                <p style="margin:4px 0 0;font-size:10px;color:#666;text-transform:uppercase;letter-spacing:2px;">
+                            <td align="left" valign="middle" style="vertical-align:middle;width:75%;">
+                                <img src="https://cdn.caballosrevelo.com/logos/logo.png" width="76" height="auto" alt="Caballos Revelo" style="display:block;border:0;max-width:76px;height:auto;margin:0;">
+                                <p style="margin:2px 0 0;font-size:8px;color:#777777;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;line-height:1.3;">
+                                    Caballos Revelo
                                 </p>
                             </td>
-                            <td align="right" style="vertical-align:middle;">
-                                <a href="javascript:void(0)" onclick="shareVoucher(this)" title="Compartir"
-                                   style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#f0f0f0;border:1px solid #00e600;text-decoration:none;">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e600" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="18" cy="5" r="3"></circle>
-                                        <circle cx="6" cy="12" r="3"></circle>
-                                        <circle cx="18" cy="19" r="3"></circle>
-                                        <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
-                                        <line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line>
-                                    </svg>
-                                </a>
+                            <td align="right" valign="middle" width="44" style="vertical-align:middle;width:44px;white-space:nowrap;">
+                                <table border="0" cellspacing="0" cellpadding="0" align="right" role="presentation" style="border-collapse:collapse;margin:0;">
+                                    <tr>
+                                        <td align="center" valign="middle" width="32" height="32" style="width:32px;height:32px;text-align:center;vertical-align:middle;mso-line-height-rule:exactly;line-height:32px;">
+                                            <a href="javascript:void(0)" onclick="shareVoucher(this)" title="Compartir"
+                                               style="display:inline-block;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;background:#ffffff;border:1px solid #e5e5e5;text-decoration:none;">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block;">
+                                                    <circle cx="18" cy="5" r="3"></circle>
+                                                    <circle cx="6" cy="12" r="3"></circle>
+                                                    <circle cx="18" cy="19" r="3"></circle>
+                                                    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line>
+                                                    <line x1="15.4" y1="6.5" x2="8.6" y2="10.5"></line>
+                                                </svg>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
                             </td>
                         </tr>
                     </table>
@@ -38,44 +46,45 @@
             </tr>
 
             <tr>
-                <td style="padding:22px 25px 10px;" align="left">
-                    <p style="font-size:13px;margin:0;color:#555;">Hola,</p>
-                    <strong style="color:#000;font-size:16px;display:block;margin-top:6px;">
+                <td style="padding:12px 16px 6px;" align="left">
+                    <p style="font-size:12px;margin:0;color:#555555;">Hola,</p>
+                    <strong style="color:#0D0D0D;font-size:15px;display:block;margin-top:3px;">
                         {Nombre Cliente}
                     </strong>
                 </td>
             </tr>
 
             <tr>
-                <td style="padding:0 25px 20px;">
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size:12px;border-top:1px solid #eee;padding-top:15px;">
-                        
+                <td style="padding:0 16px 12px;">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation" style="font-size:11px;border-top:1px solid #eeeeee;padding-top:10px;border-collapse:collapse;">
+
                         <tr>
-                            <td style="padding:7px 0;color:#555;"><strong>ID:</strong></td>
-                            <td align="right" style="padding:7px 0;color:#000;">#{ID}</td>
+                            <td style="padding:4px 0;color:#555555;"><strong style="color:#0D0D0D;">ID:</strong></td>
+                            <td align="right" style="padding:4px 0;color:#0D0D0D;font-weight:600;">#{ID}</td>
                         </tr>
 
                         <tr>
-                            <td style="padding:7px 0;color:#555;"><strong>Fecha Compra:</strong></td>
-                            <td align="right" style="padding:7px 0;color:#000;">{Fecha}</td>
+                            <td style="padding:4px 0;color:#555555;"><strong style="color:#0D0D0D;">Fecha Compra:</strong></td>
+                            <td align="right" style="padding:4px 0;color:#0D0D0D;">{Fecha}</td>
                         </tr>
 
                         <tr>
-                            <td style="padding:7px 0;color:#555;"><strong>Cant. Números:</strong></td>
-                            <td align="right" style="padding:7px 0;color:#555;font-weight:bold;font-size:13px;">{Cantidad}</td>
+                            <td style="padding:4px 0;color:#555555;"><strong style="color:#0D0D0D;">Cant. Números:</strong></td>
+                            <td align="right" style="padding:4px 0;color:#0D0D0D;font-weight:700;font-size:12px;">{Cantidad}</td>
                         </tr>
-                        <tr>
-                            <td style="padding:7px 0;color:#555;"><strong>Evento:</strong></td>
-                            <td align="right" style="padding:7px 0;color:#555;">🛵⚡️ EVENTO FLASH, NMAX V3 2027 PARA EL PREMIO MAYOR Y PARA EL NÚMERO INVERTID0 2 PALIT0S. 💶 JUEG4 ESTE 30 DE MAYO CON LA DE BOYACÁ</td>
-                        </tr>                        
 
                         <tr>
-                            <td colspan="2" style="padding:12px 0 6px;color:#555;">
-                                <strong>Código de Seguridad:</strong>
+                            <td style="padding:4px 0;color:#555555;vertical-align:top;"><strong style="color:#0D0D0D;">Evento:</strong></td>
+                            <td align="right" style="padding:4px 0;color:#555555;line-height:1.35;">{Evento}</td>
+                        </tr>
+
+                        <tr>
+                            <td colspan="2" style="padding:8px 0 4px;color:#555555;">
+                                <strong style="color:#0D0D0D;">Código de Seguridad:</strong>
                             </td>
                         </tr>
                         <tr>
-                            <td colspan="2" style="padding:12px;background:#ffffff;border-radius:10px;color:#00c800;font-family:monospace;font-size:15px;text-align:center;border:1px solid #00c800;font-weight:bold;letter-spacing:2px;">
+                            <td colspan="2" style="padding:8px 10px;background:#f7f7f7;border-radius:8px;color:#0D0D0D;font-family:Consolas,'Courier New',monospace;font-size:14px;text-align:center;border:1px solid #e5e5e5;font-weight:700;letter-spacing:1.5px;">
                                 {Codigo}
                             </td>
                         </tr>
@@ -85,12 +94,12 @@
             </tr>
 
             <tr>
-                <td align="center" style="padding:0 20px 30px;">
-                    <div style="background:#f9f9f9;border:2px dashed #000000;border-radius:14px;padding:22px;">
-                        <p style="margin:0 0 15px;font-size:11px;color:#000;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">
+                <td align="center" style="padding:0 16px 12px;">
+                    <div style="border:1px solid #eeeeee;border-radius:10px;padding:12px 10px;background:#ffffff;">
+                        <p style="margin:0 0 8px;font-size:10px;color:#555555;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">
                             Tus Números
                         </p>
-                        <div style="font-size:14px;color:#000;">
+                        <div style="font-size:13px;color:#0D0D0D;text-align:center;line-height:1.6;">
                             {NumerosHTML}
                         </div>
                     </div>
@@ -98,22 +107,22 @@
             </tr>
 
             <tr>
-                <td align="center" style="padding:25px 15px;background:#f4f4f4;border-top:1px solid #eee;">
-                    
-                    <p style="margin:0;color:#666;font-size:11px;text-transform:uppercase;letter-spacing:1px;">
-                        Total Pagado
+                <td align="center" style="padding:10px 14px 9px;background:#f7f7f7;border-top:1px solid #eeeeee;">
+
+                    <p style="margin:0;color:#777777;font-size:9px;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;line-height:1.2;">
+                        Total pagado
                     </p>
 
-                    <h2 style="margin:8px 0 25px;color:#00c800;font-size:22px;font-weight:700;">
+                    <p style="margin:2px 0 7px;color:#c8870a;font-size:16px;font-weight:800;line-height:1.2;">
                         {Total}
-                    </h2>
+                    </p>
 
                     <a href="{GrupoUrl}"
-                        style="background:linear-gradient(135deg,#00d900,#00b300);color:#ffffff;padding:11px 28px;border-radius:999px;text-decoration:none;font-weight:bold;font-size:12px;text-transform:uppercase;display:inline-block;letter-spacing:1px;box-shadow:0 4px 12px rgba(0,200,0,0.2);">
+                        style="display:inline-block;padding:7px 18px;background-color:#ffc107;border:1px solid #e0aa00;border-radius:999px;-webkit-border-radius:999px;text-decoration:none;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;color:#0D0D0D;font-family:Montserrat,'Segoe UI',Arial,sans-serif;line-height:1.2;">
                         Ir al grupo
                     </a>
 
-                    <p style="margin:20px 0 0;font-size:10px;color:#777;">
+                    <p style="margin:6px 0 0;font-size:8px;color:#999999;line-height:1.3;">
                         Hemos enviado una copia a tu correo electrónico.
                     </p>
 

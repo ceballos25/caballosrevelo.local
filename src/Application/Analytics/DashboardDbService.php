@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Application\Analytics;
 
+use App\Domain\Ticket\ValueObject\TicketStatus;
 use App\Infrastructure\Database\PdoFactory;
 use PDO;
 
@@ -19,11 +20,14 @@ final class DashboardDbService
 
         $sql = <<<'SQL'
 SELECT s.id_sale, s.total_sale, s.quantity_sale, s.date_created_sale, s.payment_method_sale,
+       s.source_sale, s.id_admin_sale,
        c.name_customer, c.lastname_customer, c.phone_customer, c.city_customer,
-       r.title_raffle, s.code_sale
+       r.title_raffle, s.code_sale,
+       COALESCE(a.email_admin, 'Sistema') AS email_admin
 FROM sales s
 LEFT JOIN customers c ON c.id_customer = s.id_customer_sale
 LEFT JOIN raffles r ON r.id_raffle = s.id_raffle_sale
+LEFT JOIN admins a ON a.id_admin = s.id_admin_sale
 WHERE s.date_created_sale BETWEEN :d1 AND :d2
 SQL;
         if ($idRaffle !== null && $idRaffle > 0) {
@@ -45,7 +49,14 @@ SQL;
                 'totalVentas' => 0.0,
                 'numerosVendidos' => 0,
                 'numerosDisponibles' => 0,
+                'numerosLibres' => 0,
+                'numerosReservados' => 0,
                 'totalClientes' => 0,
+                'porcentajeReal' => 0.0,
+                'numerosVendidosRifa' => 0,
+                'totalNumerosRifa' => 0,
+                'transferenciasPendientes' => 0,
+                'tituloRifaProgreso' => '',
             ],
             'graficas' => [
                 'tendencia' => [],
@@ -119,9 +130,15 @@ SQL;
         $ultimas = [];
         foreach (array_slice($rows, 0, 10) as $r) {
             $ultimas[] = (object)[
+                'id_sale' => (int)$r['id_sale'],
                 'code_sale' => $r['code_sale'],
                 'name_customer' => $r['name_customer'],
                 'lastname_customer' => $r['lastname_customer'],
+                'phone_customer' => $r['phone_customer'],
+                'quantity_sale' => (int)$r['quantity_sale'],
+                'payment_method_sale' => $r['payment_method_sale'],
+                'source_sale' => $r['source_sale'],
+                'email_admin' => $r['email_admin'],
                 'title_raffle' => $r['title_raffle'],
                 'total_sale' => $r['total_sale'],
                 'date_created_sale' => $r['date_created_sale'],
@@ -129,8 +146,13 @@ SQL;
         }
         $response['ultimasVentas'] = $ultimas;
 
-        // KPIs stock y clientes
-        $sqlAvail = 'SELECT COUNT(*) FROM tickets WHERE status_ticket = 0';
+        // Stock no vendido: disponibles (0) + reservados (2).
+        $available = TicketStatus::AVAILABLE;
+        $reserved = TicketStatus::RESERVED;
+        $sqlAvail = "SELECT
+            SUM(CASE WHEN status_ticket = {$available} THEN 1 ELSE 0 END) AS libres,
+            SUM(CASE WHEN status_ticket = {$reserved} THEN 1 ELSE 0 END) AS reservados
+            FROM tickets WHERE status_ticket IN ({$available}, {$reserved})";
         $paramsAvail = [];
         if ($idRaffle !== null && $idRaffle > 0) {
             $sqlAvail .= ' AND id_raffle_ticket = :rid';
@@ -141,9 +163,59 @@ SQL;
             $stA->bindValue($k, $val, PDO::PARAM_INT);
         }
         $stA->execute();
-        $response['kpis']['numerosDisponibles'] = (int)$stA->fetchColumn();
+        $stock = $stA->fetch(PDO::FETCH_ASSOC) ?: [];
+        $libres = (int)($stock['libres'] ?? 0);
+        $reservados = (int)($stock['reservados'] ?? 0);
+        $response['kpis']['numerosLibres'] = $libres;
+        $response['kpis']['numerosReservados'] = $reservados;
+        $response['kpis']['numerosDisponibles'] = $libres + $reservados;
 
         $response['kpis']['totalClientes'] = (int)$pdo->query('SELECT COUNT(*) FROM customers')->fetchColumn();
+
+        $sqlProgress = 'SELECT
+            SUM(CASE WHEN status_ticket = 1 THEN 1 ELSE 0 END) AS vendidos,
+            COUNT(*) AS total
+            FROM tickets WHERE 1=1';
+        $paramsProgress = [];
+        if ($idRaffle !== null && $idRaffle > 0) {
+            $sqlProgress .= ' AND id_raffle_ticket = :rid';
+            $paramsProgress[':rid'] = $idRaffle;
+        }
+        $stP = $pdo->prepare($sqlProgress);
+        foreach ($paramsProgress as $k => $val) {
+            $stP->bindValue($k, $val, PDO::PARAM_INT);
+        }
+        $stP->execute();
+        $prog = $stP->fetch(PDO::FETCH_ASSOC);
+        $vendidosRifa = (int)($prog['vendidos'] ?? 0);
+        $totalRifa = (int)($prog['total'] ?? 0);
+        $response['kpis']['numerosVendidosRifa'] = $vendidosRifa;
+        $response['kpis']['totalNumerosRifa'] = $totalRifa;
+        $response['kpis']['porcentajeReal'] = $totalRifa > 0
+            ? round(($vendidosRifa * 100) / $totalRifa, 2)
+            : 0.0;
+
+        if ($idRaffle !== null && $idRaffle > 0) {
+            $stTitle = $pdo->prepare('SELECT title_raffle FROM raffles WHERE id_raffle = :id LIMIT 1');
+            $stTitle->bindValue(':id', $idRaffle, PDO::PARAM_INT);
+            $stTitle->execute();
+            $response['kpis']['tituloRifaProgreso'] = (string)($stTitle->fetchColumn() ?: '');
+        } else {
+            $response['kpis']['tituloRifaProgreso'] = 'Todas las rifas';
+        }
+
+        $sqlPending = 'SELECT COUNT(*) FROM transfers WHERE status_transfer = 1';
+        $paramsPending = [];
+        if ($idRaffle !== null && $idRaffle > 0) {
+            $sqlPending .= ' AND id_raffle_transfer = :rid';
+            $paramsPending[':rid'] = $idRaffle;
+        }
+        $stPending = $pdo->prepare($sqlPending);
+        foreach ($paramsPending as $k => $val) {
+            $stPending->bindValue($k, $val, PDO::PARAM_INT);
+        }
+        $stPending->execute();
+        $response['kpis']['transferenciasPendientes'] = (int)$stPending->fetchColumn();
 
         ksort($tendenciaMap);
         foreach ($tendenciaMap as $f => $monto) {

@@ -1,7 +1,3 @@
-/**
- * Meta Pixel + Conversions API (deduplicación con eventID).
- * Payloads neutros: sin referencias a stickers, rifas u otros términos de negocio.
- */
 (function (window) {
     'use strict';
 
@@ -9,40 +5,21 @@
     const AJAX_URL = cfg.ajaxUrl || 'front/ajax/meta.ajax.php';
     const sentKeys = new Set();
     const STORAGE_PREFIX = 'edts_meta_once_';
-    const BLOCKED_TERMS = /sticker|stickers|rifa|rifas|raffle|raffles|ticket|tickets|suerte|sorteo|boleta|boletas|paquete|paquetes|transferencia|compra[\s\-]?web/i;
+    const BLOCKED_TERMS = /sticker|stickers|rifa|rifas|raffle|raffles|sorteo|sorteos|loteria|loter[ií]a|lottery|ticket|tickets|suerte|boleta|boletas|paquete|paquetes|premio|premios|bingo|apuesta|transferencia|compra[\s\-]?web/i;
 
     function containsBlockedTerms(value) {
         return BLOCKED_TERMS.test(String(value || ''));
     }
 
     function sanitizeCustomData(customData) {
-        const data = Object.assign({}, customData || {});
-        delete data.content_name;
-
-        ['content_category', 'search_string'].forEach(function (key) {
-            if (data[key] === undefined) {
-                return;
-            }
-            const value = String(data[key]).trim();
-            if (value === '' || containsBlockedTerms(value)) {
-                delete data[key];
-            }
-        });
-
-        if (Array.isArray(data.content_ids)) {
-            const ids = data.content_ids
-                .map(function (id) {
-                    return String(id).replace(/[^0-9\-]/g, '');
-                })
-                .filter(Boolean);
-            if (ids.length) {
-                data.content_ids = ids;
-            } else {
-                delete data.content_ids;
-            }
+        const data = customData || {};
+        if (data.currency !== undefined || data.value !== undefined) {
+            return {
+                currency: String(data.currency || 'COP'),
+                value: Number(data.value) || 0
+            };
         }
-
-        return data;
+        return {};
     }
 
     function sanitizeEventRef(eventRef) {
@@ -80,19 +57,11 @@
         return !!(cfg.enabled && cfg.pixelId && typeof window.fbq === 'function');
     }
 
-    function commerceData(quantity, value, contentId) {
-        const data = {
+    function commerceData(_quantity, value) {
+        return {
             currency: 'COP',
-            value: Number(value) || 0,
-            content_type: 'product',
-            num_items: Math.max(1, Number(quantity) || 1)
+            value: Number(value) || 0
         };
-
-        if (contentId) {
-            data.content_ids = [String(contentId)];
-        }
-
-        return data;
     }
 
     function dedupeKey(eventName, eventRef) {
@@ -112,7 +81,7 @@
         try {
             sessionStorage.setItem(STORAGE_PREFIX + storageKey, '1');
         } catch (e) {
-            /* ignore */
+            
         }
     }
 
@@ -127,7 +96,16 @@
     async function track(eventName, customData, eventRef, userData, options) {
         options = options || {};
 
+        const allowed = cfg.standardEvents || ['PageView'];
+        if (!allowed.includes(eventName)) {
+            return null;
+        }
+
         if (!cfg.enabled) {
+            return null;
+        }
+
+        if (cfg.capiEnabled === false) {
             return null;
         }
 
@@ -165,7 +143,6 @@
 
             const json = await res.json();
             if (!json.success || !json.event_id) {
-                console.warn('[MetaEvents]', eventName, json.message || 'No event_id');
                 return null;
             }
 
@@ -175,7 +152,6 @@
 
             return json;
         } catch (err) {
-            console.warn('[MetaEvents]', eventName, err);
             return null;
         }
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Presentation\Http\Controller;
 
 use App\Application\Settings\SettingsService;
+use App\Presentation\Http\Middleware\CsrfMiddleware;
 use App\Presentation\Http\Middleware\RbacMiddleware;
 use App\Shared\Audit\AuditLogger;
 use App\Shared\Http\Request;
@@ -21,9 +22,12 @@ final class SettingsHttpController
         'eliminar' => ['admin', 'administrador', 'superadmin'],
     ];
 
+    private const CSRF_ACTIONS = ['actualizar', 'crear', 'eliminar'];
+
     public function __construct(
         private readonly SettingsService $service,
         private readonly RbacMiddleware $rbac,
+        private readonly CsrfMiddleware $csrf,
         private readonly AuditLogger $audit
     ) {
     }
@@ -36,6 +40,7 @@ final class SettingsHttpController
                 Response::json(['success' => false, 'message' => 'Accion invalida'], 422);
             }
 
+            $this->csrf->handle($request, self::CSRF_ACTIONS);
             $this->rbac->authorize($action, self::ROLE_BY_ACTION);
             $result = $this->service->execute($action, $this->sanitizePayload($request->all()));
             $this->audit->log('settings.' . $action, ['success' => (bool)($result['success'] ?? false)]);
@@ -48,13 +53,19 @@ final class SettingsHttpController
 
     private function sanitizePayload(array $payload): array
     {
+        $skip = ['action', 'csrf_token', '_csrf'];
         $clean = [];
         foreach ($payload as $key => $value) {
             if (is_array($value)) {
                 continue;
             }
-            $clean[(string)$key] = trim((string)$value);
+            $key = (string)$key;
+            if (in_array($key, $skip, true)) {
+                continue;
+            }
+            $clean[$key] = trim((string)$value);
         }
+
         return $clean;
     }
 }

@@ -7,8 +7,10 @@ declare(strict_types=1);
 final class Db
 {
     private const TABLES = [
-        'sales', 'tickets', 'customers', 'raffles', 'settings', 'admins',
-        'payment_backups', 'transfers', 'saved_reports',
+        'sales', 'sale_items', 'tickets', 'customers', 'raffles', 'settings', 'admins',
+        'payment_backups', 'payment_backup_tickets', 'transfers', 'saved_reports',
+        'roles', 'permissions', 'role_permissions', 'audit_logs', 'webhook_events',
+        'site_images', 'migrations',
     ];
 
     public static function pdo(): PDO

@@ -15,6 +15,17 @@ final class CsrfMiddleware
             return;
         }
 
+        if (!$this->isValid($request)) {
+            Response::json([
+                'success' => false,
+                'message' => 'CSRF token invalido. Recarga la pagina (F5) e intenta de nuevo.',
+                'code' => 'csrf_invalid',
+            ], 403);
+        }
+    }
+
+    public function isValid(Request $request): bool
+    {
         $token = (string)$request->input('csrf_token', '');
         if ($token === '') {
             $token = (string)$request->input('_csrf', '');
@@ -24,8 +35,6 @@ final class CsrfMiddleware
         }
         $sessionToken = (string)($_SESSION['csrf_token'] ?? '');
 
-        if ($sessionToken === '' || $token === '' || !hash_equals($sessionToken, $token)) {
-            Response::json(['success' => false, 'message' => 'CSRF token invalido'], 403);
-        }
+        return $sessionToken !== '' && $token !== '' && hash_equals($sessionToken, $token);
     }
 }

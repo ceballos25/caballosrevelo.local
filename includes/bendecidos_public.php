@@ -5,6 +5,8 @@ declare(strict_types=1);
 /**
  * Números "bendecidos" en la landing: clase `premiado` solo si en BD están
  * is_premium_ticket = 1 y status_ticket = 1 (vendido).
+ *
+ * Requiere config/config.php (clase Db) — se carga desde includes/landing/bootstrap.php.
  */
 function edts_public_raffle_id(): int
 {
@@ -32,7 +34,7 @@ function edts_public_raffle_id(): int
 }
 
 /**
- * @return list{array{number:string, premiado_vendido:bool}}
+ * @return list<array{number: string, premiado_vendido: bool}> 
  */
 function edts_bendecidos_cards(): array
 {

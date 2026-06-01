@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/mail.controller.php';
+require_once __DIR__ . '/../bootstrap/container.php';
 
 use App\Application\Marketing\MetaConversionsApi;
 
@@ -177,7 +178,11 @@ class VentasController
             try {
                 $pdo->beginTransaction();
 
-                if (self::reservarTicketsEnTransaccion($pdo, $ticketIds) === null) {
+                $paymentBackupId = isset($data['id_payment_backup']) && $data['id_payment_backup'] !== ''
+                    ? (int)$data['id_payment_backup']
+                    : null;
+
+                if (self::reservarTicketsEnTransaccion($pdo, $ticketIds, $paymentBackupId) === null) {
                     $pdo->rollBack();
                     return ['success' => false, 'message' => 'No se pudieron reservar todos los números. Intenta de nuevo.'];
                 }
@@ -228,13 +233,31 @@ class VentasController
                     }
                 }
 
+                self::insertSaleItems($pdo, (int)$idVenta, $ticketIds, $totalInsert);
+
                 $pdo->commit();
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
                 self::logVenta('ERROR_TX_VENTA', ['error' => $e->getMessage()]);
-                return ['success' => false, 'message' => 'Error al crear venta'];
+                $msg = 'Error al crear venta';
+                if (str_contains($e->getMessage(), 'uk_si_ticket')) {
+                    $msg = 'Conflicto al registrar los números vendidos. Intenta de nuevo.';
+                }
+
+                return ['success' => false, 'message' => $msg];
+            }
+
+            try {
+                AppContainer::get()->audit()->record('sale.created', 'sale', (int)$idVenta, null, [
+                    'code_sale' => trim((string)$data['code_sale']),
+                    'quantity' => count($ticketIds),
+                    'total' => $totalInsert,
+                    'id_raffle' => $idRaffle,
+                ], isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null);
+            } catch (Throwable) {
+                /* best effort */
             }
 
             try {
@@ -250,25 +273,77 @@ class VentasController
                 $ticketIds,
                 $totalInsert
             );
-            if (self::debeEnviarMetaPurchase(self::metaPurchaseSource($data))) {
-                try {
-                    $extraUserData = is_array($data['meta_user_data'] ?? null)
-                        ? $data['meta_user_data']
-                        : [];
-                    MetaConversionsApi::sendPurchase($metaPurchase, null, $extraUserData);
-                } catch (Throwable $e) {
-                    self::logVenta('ERROR_META_CAPI_PURCHASE', ['idVenta' => $idVenta, 'error' => $e->getMessage()]);
+            try {
+                $extraUserData = is_array($data['meta_user_data'] ?? null)
+                    ? $data['meta_user_data']
+                    : [];
+                $saleCode = (string)($metaPurchase['code_sale'] ?? $idVenta);
+                $guard = new \App\Application\Marketing\MetaPixelGuard();
+                if ($guard->shouldSendPurchase($saleCode)) {
+                    $eventId = MetaConversionsApi::purchaseEventId(
+                        (int)$idVenta,
+                        (string)($metaPurchase['code_sale'] ?? '')
+                    );
+                    if (MetaConversionsApi::sendPurchase($metaPurchase, $eventId, $extraUserData)) {
+                        $guard->markPurchaseSent($saleCode);
+                        try {
+                            AppContainer::get()->audit()->record('meta.purchase.sent', 'sale', (int)$idVenta, null, [
+                                'code_sale' => $saleCode,
+                            ]);
+                        } catch (Throwable) {
+                            /* best effort */
+                        }
+                    }
+                } else {
+                    self::logVenta('META_PURCHASE_OMITIDO', [
+                        'idVenta' => $idVenta,
+                        'code_sale' => $saleCode,
+                        'motivo' => 'ya_enviado_o_codigo_vacio',
+                    ]);
                 }
-            } else {
-                MetaConversionsApi::logPurchaseNotSent(
-                    $metaPurchase,
-                    'Origen no autorizado para Meta CAPI; source=' . self::metaPurchaseSource($data)
-                        . '; allowed=' . implode(',', self::metaAllowedSources())
-                );
+            } catch (Throwable $e) {
+                self::logVenta('ERROR_META_CAPI_PURCHASE', ['idVenta' => $idVenta, 'error' => $e->getMessage()]);
             }
 
             return ['success' => true, 'id_sale' => $idVenta];
         });
+    }
+
+    /**
+     * @param list<int> $ticketIds
+     */
+    private static function insertSaleItems(\PDO $pdo, int $saleId, array $ticketIds, float $totalSale): void
+    {
+        if ($ticketIds === []) {
+            return;
+        }
+        $unitPrice = round($totalSale / count($ticketIds), 2);
+        $placeholders = implode(',', array_fill(0, count($ticketIds), '?'));
+        $stmt = $pdo->prepare(
+            "SELECT id_ticket, number_ticket FROM tickets WHERE id_ticket IN ({$placeholders})"
+        );
+        $stmt->execute($ticketIds);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        // uk_si_ticket: un ticket solo puede tener una fila; reactivar si fue anulado antes.
+        $ins = $pdo->prepare(
+            'INSERT INTO sale_items (id_sale, id_ticket, number_ticket, unit_price, status_item)
+             VALUES (?,?,?,?,\'active\')
+             ON DUPLICATE KEY UPDATE
+               id_sale = VALUES(id_sale),
+               number_ticket = VALUES(number_ticket),
+               unit_price = VALUES(unit_price),
+               status_item = \'active\',
+               cancelled_at = NULL,
+               cancelled_by = NULL'
+        );
+        foreach ($rows as $row) {
+            $ins->execute([
+                $saleId,
+                (int)$row['id_ticket'],
+                (string)$row['number_ticket'],
+                $unitPrice,
+            ]);
+        }
     }
 
     public static function crearVentaMixta($data)
@@ -331,27 +406,60 @@ class VentasController
 
     /**
      * Reserva filas dentro de la transacción activa: solo pasa 0→2 si siguen disponibles.
+     * Con $forPaymentBackupId, un ticket en reservado (2) solo es válido si pertenece a ese respaldo.
      *
      * @param int[] $ids
      * @return int[]|null null si alguna reserva falló (el caller debe hacer rollBack).
      */
-    private static function reservarTicketsEnTransaccion(\PDO $pdo, array $ids): ?array
+    private static function reservarTicketsEnTransaccion(\PDO $pdo, array $ids, ?int $forPaymentBackupId = null): ?array
     {
-        $st = $pdo->prepare(
+        $stAvail = $pdo->prepare(
             'UPDATE tickets SET status_ticket = :r WHERE id_ticket = :id AND status_ticket = :a'
         );
+        $stCheck = $pdo->prepare(
+            'SELECT id_ticket FROM tickets WHERE id_ticket = :id AND status_ticket = :r LIMIT 1'
+        );
+        $stBackupLink = $pdo->prepare(
+            'SELECT 1 FROM payment_backup_tickets
+             WHERE id_payment_backup = :bid AND id_ticket = :tid LIMIT 1'
+        );
+
         foreach ($ids as $id) {
-            $st->execute([
+            $stAvail->execute([
                 ':r' => self::STATUS_TICKET_RESERVED,
                 ':id' => $id,
                 ':a' => self::STATUS_TICKET_AVAILABLE,
             ]);
-            if ($st->rowCount() !== 1) {
+            if ($stAvail->rowCount() === 1) {
+                continue;
+            }
+
+            $stCheck->execute([
+                ':id' => $id,
+                ':r' => self::STATUS_TICKET_RESERVED,
+            ]);
+            if (!$stCheck->fetchColumn()) {
                 self::logVenta('ERROR_RESERVA_TICKET', ['id' => $id]);
 
                 return null;
             }
+
+            if ($forPaymentBackupId !== null && $forPaymentBackupId > 0) {
+                $stBackupLink->execute([
+                    ':bid' => $forPaymentBackupId,
+                    ':tid' => $id,
+                ]);
+                if (!$stBackupLink->fetchColumn()) {
+                    self::logVenta('ERROR_RESERVA_TICKET_OTRO_BACKUP', [
+                        'id' => $id,
+                        'id_payment_backup' => $forPaymentBackupId,
+                    ]);
+
+                    return null;
+                }
+            }
         }
+
         self::logVenta('TICKETS_RESERVADOS_EN_TX', $ids);
 
         return $ids;
@@ -362,35 +470,15 @@ class VentasController
         if (empty($id_sale)) {
             return ['success' => false, 'message' => 'ID inválido'];
         }
-        $id_sale = (int)$id_sale;
-
-        $tickets = Db::fetchAll(
-            'SELECT id_ticket FROM tickets WHERE id_sale_ticket = :s',
-            [':s' => $id_sale]
-        );
-        $errores = [];
-        foreach ($tickets as $t) {
-            $n = Db::execute(
-                'UPDATE tickets SET status_ticket = :a, id_customer_ticket = NULL, id_sale_ticket = NULL WHERE id_ticket = :id',
-                [':a' => self::STATUS_TICKET_AVAILABLE, ':id' => (int)$t->id_ticket]
-            );
-            if ($n < 1) {
-                $errores[] = (int)$t->id_ticket;
-            }
+        $adminId = (int)($_SESSION['user_id'] ?? 0);
+        if ($adminId <= 0) {
+            return ['success' => false, 'message' => 'No autorizado'];
         }
-        if ($errores !== []) {
-            return [
-                'success' => false,
-                'message' => 'No se pudieron liberar todos los tickets.',
-                'tickets_error' => $errores,
-            ];
+        try {
+            return AppContainer::get()->sales()->cancelTotal((int)$id_sale, $adminId);
+        } catch (Throwable $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
         }
-
-        $del = Db::delete('sales', 'id_sale = :id', [':id' => $id_sale]);
-        if ($del < 1) {
-            return ['success' => false, 'message' => 'Venta no encontrada o no se pudo eliminar'];
-        }
-        return ['success' => true];
     }
 
     public static function obtenerFiltros()
@@ -485,22 +573,6 @@ class VentasController
         return ['success' => true, 'html_recibo' => $htmlRecibo];
     }
 
-    private static function metaPurchaseSource(array $data): string
-    {
-        return trim((string)($data['source_sale'] ?? $data['source_transfer'] ?? ''));
-    }
-
-    private static function debeEnviarMetaPurchase(string $source): bool
-    {
-        if (defined('META_CAPI_FILTER_BY_SOURCE') && !(bool)\META_CAPI_FILTER_BY_SOURCE) {
-            return true;
-        }
-
-        $source = strtolower(trim($source));
-
-        return $source !== '' && in_array($source, self::metaAllowedSources(), true);
-    }
-
     /**
      * @param array<int> $ticketIds
      * @param array<string, mixed> $data
@@ -528,10 +600,7 @@ class VentasController
             'department_customer' => $data['department_customer'] ?? '',
         ];
 
-        if (
-            trim((string)$payload['email_customer']) === ''
-            && $idCliente > 0
-        ) {
+        if ($idCliente > 0) {
             $customer = Db::fetchOne(
                 'SELECT name_customer, lastname_customer, phone_customer, email_customer, city_customer, department_customer
                  FROM customers WHERE id_customer = :id LIMIT 1',
@@ -546,27 +615,15 @@ class VentasController
                     'city_customer',
                     'department_customer',
                 ] as $field) {
-                    if (trim((string)$payload[$field]) === '' && !empty($customer->{$field})) {
-                        $payload[$field] = (string)$customer->{$field};
+                    $dbValue = trim((string)($customer->{$field} ?? ''));
+                    if ($dbValue !== '') {
+                        $payload[$field] = $dbValue;
                     }
                 }
             }
         }
 
         return $payload;
-    }
-
-    /**
-     * @return string[]
-     */
-    private static function metaAllowedSources(): array
-    {
-        $raw = defined('META_CAPI_ALLOWED_SOURCES') ? (string)META_CAPI_ALLOWED_SOURCES : '';
-
-        return array_values(array_filter(array_unique(array_map(
-            static fn($source) => strtolower(trim((string)$source)),
-            explode(',', $raw)
-        ))));
     }
 
     public static function consultarVenta($idVenta)
@@ -578,7 +635,7 @@ class VentasController
     public static function consultarTicketsVenta($idVenta)
     {
         $rows = Db::fetchAll(
-            'SELECT number_ticket, COALESCE(is_premium_ticket, 0) AS is_premium_ticket
+            'SELECT id_ticket, number_ticket, COALESCE(is_premium_ticket, 0) AS is_premium_ticket
              FROM tickets WHERE id_sale_ticket = :id',
             [':id' => $idVenta]
         );
@@ -588,6 +645,7 @@ class VentasController
 
         return array_map(static function ($item) {
             return (object)[
+                'id_ticket' => (int)($item->id_ticket ?? 0),
                 'number_ticket' => $item->number_ticket,
                 'is_premium_ticket' => (int)($item->is_premium_ticket ?? 0),
             ];
@@ -609,7 +667,8 @@ class VentasController
         $fecha->setTimezone(new DateTimeZone('America/Bogota'));
 
         $grupoUrl = '#';
-        $nombreRifa = 'El Día de Tu Suerte';
+        $nombreRifa = 'Caballos Revelo';
+        $sorteoLabel = '10 de julio · por las últimas 3 de Medellín';
 
         $settingsRows = Db::fetchAll('SELECT key_setting, value_setting FROM settings');
         foreach ($settingsRows as $item) {
@@ -621,19 +680,22 @@ class VentasController
             }
         }
 
+        $tituloEvento = trim(preg_replace('/\*+/', '', (string)($venta->title_raffle ?? 'Hermoso Caballo ¡Trote y Galope!')));
+        if ($tituloEvento === '') {
+            $tituloEvento = 'Hermoso Caballo ¡Trote y Galope!';
+        }
+        $textoEvento = $tituloEvento . ' · ' . $sorteoLabel;
+
         $htmlTickets = '';
         foreach ($tickets as $t) {
             $numero = is_string($t) ? $t : ($t->number_ticket ?? '');
+            $idTicket = is_string($t) ? 0 : (int)($t->id_ticket ?? 0);
             if ($numero === '') {
                 continue;
             }
             $esPremium = !is_string($t) && (int)($t->is_premium_ticket ?? 0) === 1;
 
-            if ($esPremium) {
-                $htmlTickets .= self::htmlChipNumeroReciboBendecidos((string)$numero);
-            } else {
-                $htmlTickets .= self::htmlChipNumeroReciboDefault((string)$numero);
-            }
+            $htmlTickets .= self::htmlChipNumeroRecibo((string)$numero, $idTicket, 'selected');
         }
 
         $reemplazos = [
@@ -646,6 +708,7 @@ class VentasController
             '{Total}' => '$' . number_format((float)$venta->total_sale, 0, ',', '.'),
             '{GrupoUrl}' => $grupoUrl,
             '{NombreRifa}' => $nombreRifa,
+            '{Evento}' => htmlspecialchars($textoEvento, ENT_QUOTES, 'UTF-8'),
         ];
 
         return str_replace(array_keys($reemplazos), array_values($reemplazos), file_get_contents($rutaPlantilla));
@@ -653,6 +716,7 @@ class VentasController
 
     public static function obtenerTicketsDisponibles($idRaffle)
     {
+        $idRaffle = (int) $idRaffle;
         $data = Db::fetchAll(
             'SELECT id_ticket, number_ticket FROM tickets WHERE id_raffle_ticket = :r AND status_ticket = 0',
             [':r' => $idRaffle]
@@ -660,7 +724,13 @@ class VentasController
         if ($data !== []) {
             shuffle($data);
         }
-        return ['success' => true, 'data' => $data];
+        $priceRow = Db::fetchOne(
+            'SELECT price_raffle FROM raffles WHERE id_raffle = :id LIMIT 1',
+            [':id' => $idRaffle]
+        );
+        $priceRaffle = $priceRow ? (float) ($priceRow->price_raffle ?? 0) : 0.0;
+
+        return ['success' => true, 'data' => $data, 'price_raffle' => $priceRaffle];
     }
 
     public static function obtenerNumerosVendidos()
@@ -801,6 +871,42 @@ class VentasController
     }
 
     /**
+     * Cantidad mínima configurada en la rifa (web y checkout).
+     */
+    public static function cantidadMinimaRifa(int $idRaffle): int
+    {
+        if ($idRaffle <= 0) {
+            return 1;
+        }
+
+        $row = Db::fetchOne(
+            'SELECT min_quantity_raffle FROM raffles WHERE id_raffle = :id LIMIT 1',
+            [':id' => $idRaffle]
+        );
+        if (!$row) {
+            return 1;
+        }
+
+        return max(1, (int)($row->min_quantity_raffle ?? 1));
+    }
+
+    /**
+     * @return array{success:false,message:string}|null
+     */
+    public static function validarCantidadMinimaRifa(int $idRaffle, int $quantity): ?array
+    {
+        $min = self::cantidadMinimaRifa($idRaffle);
+        if ($quantity < $min) {
+            return [
+                'success' => false,
+                'message' => 'La compra mínima es de ' . $min . ' número' . ($min > 1 ? 's' : ''),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * Total = cantidad × price_raffle (misma regla que al validar ventas). Para transferencias y otros flujos.
      *
      * @return array{success:bool,total?:float,unit?:float,message?:string}
@@ -835,13 +941,23 @@ class VentasController
         if (!$row) {
             return ['success' => false, 'message' => 'Rifa no encontrada'];
         }
-        $unit = (float)($row->price_raffle ?? 0);
-        if ($unit <= 0) {
+        $fallbackUnit = (float)($row->price_raffle ?? 0);
+
+        $pricing = \App\Application\Pricing\RaffleQuantityPricing::fromConfig(
+            class_exists(\AppContainer::class) ? \AppContainer::get()->config() : null
+        );
+        $breakdown = $pricing->calculate($quantity, $fallbackUnit);
+
+        if ($breakdown['total'] <= 0) {
             return ['success' => false, 'message' => 'Precio de rifa no configurado'];
         }
-        $total = (float) ((int) round($unit * (float) $quantity));
 
-        return ['success' => true, 'total' => $total, 'unit' => $unit];
+        return [
+            'success' => true,
+            'total' => (float)$breakdown['total'],
+            'unit' => $fallbackUnit > 0 ? $fallbackUnit : (float)$breakdown['tier1_unit'],
+            'pricing' => $breakdown,
+        ];
     }
 
     private static function validarDatosVenta(array $data): array
@@ -864,11 +980,22 @@ class VentasController
     private static function withVentaLock(callable $callback)
     {
         $lockPath = appDataPath('locks/ventas_controller.lock');
-        ensureWritableDirectory(dirname($lockPath));
-        $fp = @fopen($lockPath, 'c');
+        $lockDir = dirname($lockPath);
+        ensureWritableDirectory($lockDir, 0777);
+        @chmod($lockDir, 0777);
+
+        if (is_file($lockPath) && !is_writable($lockPath)) {
+            @chmod($lockPath, 0666);
+        }
+
+        $fp = @fopen($lockPath, 'c+');
         if (!$fp) {
+            $err = error_get_last();
+            error_log('[ventas] lock fopen failed: ' . $lockPath . ' — ' . ($err['message'] ?? 'unknown'));
+
             return ['success' => false, 'message' => 'No fue posible abrir lock de concurrencia'];
         }
+
         try {
             if (!flock($fp, LOCK_EX)) {
                 return ['success' => false, 'message' => 'No fue posible adquirir lock de concurrencia'];
@@ -880,21 +1007,25 @@ class VentasController
         }
     }
 
-    /**
-     * Mismo chip que el número normal del voucher, solo cambia el fondo a azul (sin borde).
-     */
-    private static function htmlChipNumeroReciboBendecidos(string $numberTicket): string
+    private static function htmlChipNumeroRecibo(string $numberTicket, int $idTicket = 0, string $variant = 'selected'): string
     {
-        $n = htmlspecialchars($numberTicket, ENT_QUOTES, 'UTF-8');
+        if (!function_exists('cr_numero_chip')) {
+            require_once dirname(__DIR__) . '/includes/components/cr-numero-chip.php';
+        }
 
-        return '<span style="display:inline-block;margin-right:10px;margin-bottom:4px;padding:6px 11px;background:#007bff;color:#000;border-radius:6px;font-weight:bold;">' . $n . '</span>';
+        return cr_numero_chip($numberTicket, $variant, '', $idTicket);
     }
 
-    private static function htmlChipNumeroReciboDefault(string $numberTicket): string
+    /** @deprecated Use htmlChipNumeroRecibo */
+    private static function htmlChipNumeroReciboBendecidos(string $numberTicket, int $idTicket = 0): string
     {
-        $n = htmlspecialchars($numberTicket, ENT_QUOTES, 'UTF-8');
+        return self::htmlChipNumeroRecibo($numberTicket, $idTicket, 'selected');
+    }
 
-        return '<span style="display:inline-block;margin-right:10px;margin-bottom:4px;padding:6px 11px;background:#efb810;color:#000;border:1px solid #fff;border-radius:6px;font-weight:bold;">' . $n . '</span>';
+    /** @deprecated Use htmlChipNumeroRecibo */
+    private static function htmlChipNumeroReciboDefault(string $numberTicket, int $idTicket = 0): string
+    {
+        return self::htmlChipNumeroRecibo($numberTicket, $idTicket, 'selected');
     }
 
     private static function sanitizeLogData($data)

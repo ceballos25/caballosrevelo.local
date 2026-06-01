@@ -6,7 +6,7 @@
 .env
 .env.*
 !.env.example
-marketing-server/.env
+service-payment-server/.env
 
 # Dependencias de PHP
 
@@ -22,7 +22,7 @@ marketing-server/.env
 
 *.log
 
-# Cola local de webhooks Openpay (marketing)
+# Cola local de webhooks Openpay (payment-server / reintentos)
 /openpay/queue/pending/*
 /openpay/queue/done/*
 !/openpay/queue/pending/.gitkeep

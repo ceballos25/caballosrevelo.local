@@ -16,7 +16,7 @@ class SettingsController
     public static function actualizarSettings($data)
     {
         foreach ($data as $key => $value) {
-            if ($key === 'action') {
+            if (in_array($key, ['action', 'csrf_token', '_csrf'], true)) {
                 continue;
             }
 

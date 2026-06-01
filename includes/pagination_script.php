@@ -1,8 +1,4 @@
 <script>
-/**
- * PaginationHelper - Versión Senior Blindada
- * Maneja ventanas de páginas para evitar el desbordamiento visual
- */
 const PaginationHelper = {
     getSegment: function(data, page, limit) {
         const inicio = (page - 1) * limit;
@@ -24,14 +20,12 @@ const PaginationHelper = {
         }
 
         let html = '';
-        const maxVisibles = 5; // Número de botones de página a mostrar
+        const maxVisibles = 5;
 
-        // Botón Anterior
         html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                     <a class="page-link" href="javascript:void(0)" onclick="${callbackName}(${currentPage - 1})">Ant</a>
                  </li>`;
 
-        // Lógica de Ventana (Sliding Window)
         let inicio = Math.max(1, currentPage - Math.floor(maxVisibles / 2));
         let fin = Math.min(totalPaginas, inicio + maxVisibles - 1);
 
@@ -55,7 +49,6 @@ const PaginationHelper = {
             html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="${callbackName}(${totalPaginas})">${totalPaginas}</a></li>`;
         }
 
-        // Botón Siguiente
         html += `<li class="page-item ${currentPage === totalPaginas ? 'disabled' : ''}">
                     <a class="page-link" href="javascript:void(0)" onclick="${callbackName}(${currentPage + 1})">Sig</a>
                  </li>`;

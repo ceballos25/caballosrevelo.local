@@ -1,10 +1,11 @@
 <?php
 require_once "../config/config.php";
 $page_title = "Nueva Venta";
+$extra_css = '';
 include_once ROOT_PATH . "/includes/head.php";
 ?>
 
-<div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full" data-sidebar-position="fixed" data-header-position="fixed">
+<div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-sidebartype="full">
     <?php include_once ROOT_PATH . "/includes/sidebar.php" ?>
     
     <div class="body-wrapper bg-light min-vh-100">
@@ -77,122 +78,54 @@ include_once ROOT_PATH . "/includes/head.php";
                             </div>
                         </div>
 
-                        <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card border-0 shadow-sm rounded-4 vender-numeros-card">
                             <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 fw-bold text-primary"><span class="badge bg-primary rounded-pill me-2">2</span>Números</h6>                                
+                                <h6 class="mb-0 fw-bold text-primary"><span class="badge bg-primary rounded-pill me-2">2</span>Números</h6>
+                                <small class="text-muted d-lg-none">Toca los libres</small>
                             </div>
                             
-                            <div class="card-body p-3 p-lg-4">
+                            <div class="card-body p-0 p-lg-4 cr-theme">
                                 
-                                <div class="mb-3">
+                                <div class="px-3 pt-3 px-lg-0 pt-lg-0">
                                     <select class="form-select form-select fw-bold shadow-sm text-dark border-secondary" id="selectRifa">
                                     </select>
                                 </div>
-                                
 
-                                <div class="row g-2" id="paquetesNumeros">
+                                <div id="bloquePaquetesVenta" class="px-3 px-lg-0">
+                                    <?php
+                                    $crPaquetesRowClass = 'row g-2';
+                                    $crPaquetesShowFour = true;
+                                    include ROOT_PATH . '/includes/components/cr-paquetes-grid.php';
+                                    ?>
 
-                                    <div class="col-6 col-md-4">
-                                        <input type="radio" class="btn-check paquete-radio" name="paqueteNumeros" id="paq3" value="3">
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="paq3">
-                                            <div class="fw-semibold">3 stickers</div>
-                                            <div class="small">$15.000</div>
-                                        </label>
-                                    </div>
-
-                                    <div class="col-6 col-md-4">
-                                        <input type="radio" class="btn-check paquete-radio" name="paqueteNumeros" id="paq4" value="4">
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="paq4">
-                                            <div class="fw-semibold">4 stickers</div>
-                                            <div class="small">$20.000</div>
-                                        </label>
-                                    </div>
-
-                                    <div class="col-6 col-md-4">
-                                        <input type="radio" class="btn-check paquete-radio" name="paqueteNumeros" id="paq5" value="5">
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="paq5">
-                                            <div class="fw-semibold">5 stickers</div>
-                                            <div class="small">$25.000</div>
-                                        </label>
-                                    </div>
-
-                                    <div class="col-6 col-md-4">
-                                        <input type="radio" class="btn-check paquete-radio" name="paqueteNumeros" id="paq7" value="7">
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="paq7">
-                                            <div class="fw-semibold">7 stickers</div>
-                                            <div class="small">$35.000</div>
-                                        </label>
-                                    </div>
-
-                                    <div class="col-6 col-md-4">
-                                        <input type="radio" class="btn-check paquete-radio" name="paqueteNumeros" id="paq10" value="10">
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="paq10">
-                                            <div class="fw-semibold">10 stickers</div>
-                                            <div class="small">$50.000</div>
-                                        </label>
-                                    </div>
-
-                                    <div class="col-6 col-md-4">
-                                        <input type="radio" class="btn-check paquete-radio" name="paqueteNumeros" id="paq20" value="20">
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="paq20">
-                                            <div class="fw-semibold">20 stickers</div>
-                                            <div class="small">$100.000</div>
-                                        </label>
-                                    </div>
-
-                                    <div class="col-6 col-md-4">
-                                        <input type="radio" class="btn-check paquete-radio" name="paqueteNumeros" id="paq50" value="50">
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="paq50">
-                                            <div class="fw-semibold">50 stickers</div>
-                                            <div class="small">$250.000</div>
-                                        </label>
-                                    </div>
-
-
-                                    <div class="col-6 col-md-4">
-
-                                        <input type="radio"
-                                            class="btn-check paquete-radio"
-                                            name="paqueteNumeros"
-                                            id="paqCustom"
-                                            value="custom">
-
-                                        <label class="btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center"
-                                            for="paqCustom">
-
-                                            <div class="fw-semibold">Otro</div>
-
-                                        </label>
-
-                                        <input
-                                            type="tel"
-                                            id="cantidadManual"
-                                            class="form-control form-control-sm text-center mt-1"
-                                            min="3"
-                                            placeholder="Mín. 3"
-                                            style="display:none;"
-                                        >
-
-                                    </div>   
-                                    
-                                    <div class="mt-3">
+                                    <div class="mt-3" id="bloqueNumeroPremiado">
                                         <label class="form-label fw-bold small text-muted">
                                             Escoger número (opcional)
                                         </label>
-                                        <input 
-                                            type="tel" 
-                                            class="form-control shadow-sm" 
-                                            id="numeroPremiado" 
+                                        <input
+                                            type="tel"
+                                            class="form-control shadow-sm"
+                                            id="numeroPremiado"
                                             placeholder="Ej: 12345"
                                             maxlength="5"
                                         >
                                         <small class="text-muted">
-                                            Si lo defines, se asigna dentro de la venta
+                                            Si lo defines, se asigna dentro de la venta (solo rifa automática)
                                         </small>
                                     </div>
+                                </div>
 
-
-                                </div>                  
+                                <?php
+                                $crGrillaWrapperId = 'selectorManualVenta';
+                                $crGrillaGridId = 'gridNumerosVenta';
+                                $crGrillaSearchId = 'buscarNumeroVenta';
+                                $crGrillaCountId = 'manualVentaSeleccionCount';
+                                $crGrillaStatsId = 'gridNumerosVentaStats';
+                                $crGrillaPagerId = 'gridNumerosVentaPager';
+                                $crGrillaFilterFn = 'filtrarNumerosVenta';
+                                $crGrillaWrapperClass = 'd-none mt-2';
+                                include ROOT_PATH . '/includes/components/cr-grilla-manual.php';
+                                ?>
 
                             </div>
                         </div>
@@ -237,36 +170,67 @@ include_once ROOT_PATH . "/includes/head.php";
     </div>
 </div>
 
-<div class="fixed-bottom bg-white border-top shadow-lg p-3 d-lg-none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        
-        <div class="cursor-pointer">
-            <span class="d-block small text-muted fw-bold lh-1">
-                TOTAL <i class="ti ti-chevron-up ms-1 text-primary"></i>
-            </span>
-            <span class="h3 fw-bolder text-primary" id="lblTotalMobile">$0</span>
-        </div>
-        
-        <div class="btn-group" role="group">
-            <input type="radio" class="btn-check de-none" checked name="metodoPagoMobile" id="pagoEfecMob" value="Venta Manual">
-            <label class="btn btn-outline-primary btn-sm px-3 d-none" for="pagoEfecMob"></label>
-            
+<div class="vender-mobile-bar d-lg-none" id="venderMobileBar" aria-hidden="true">
+    <div class="vender-mobile-bar__info">
+        <span class="vender-mobile-bar__label">Total</span>
+        <div class="d-flex align-items-baseline gap-2 flex-wrap">
+            <span class="vender-mobile-bar__price" id="lblTotalMobile">$0</span>
+            <span class="vender-mobile-bar__qty"><span id="lblCantidadMobile">0</span> nums</span>
         </div>
     </div>
-    
-    <button class="btn btn-success w-100 py-3 fw-bold rounded-pill shadow" id="btnCompletarVentaMobile" onclick="procesarVentaMobile()">
-        CONFIRMAR VENTA <i class="ti ti-check ms-1"></i>
+    <button type="button" class="btn btn-success fw-bold rounded-pill vender-mobile-bar__btn" id="btnAbrirCheckoutMobile" onclick="abrirCheckoutVentaMobile()">
+        Continuar
     </button>
 </div>
 
+<div class="vender-sheet-backdrop d-lg-none" id="venderSheetBackdrop" hidden onclick="cerrarCheckoutVentaMobile()"></div>
+<aside class="vender-sheet d-lg-none" id="venderCheckoutSheet" aria-hidden="true" role="dialog" aria-labelledby="venderSheetTitle">
+    <div class="vender-sheet__handle" aria-hidden="true"></div>
+    <div class="vender-sheet__header">
+        <h6 class="mb-0 fw-bold" id="venderSheetTitle">Confirmar venta</h6>
+        <button type="button" class="btn btn-link btn-sm text-muted p-0 vender-sheet__close" onclick="cerrarCheckoutVentaMobile()" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="vender-sheet__body">
+        <div class="vender-sheet__row">
+            <span class="text-muted">Cantidad</span>
+            <span class="fw-bold" id="sheetCantidad">0 números</span>
+        </div>
+        <div class="vender-sheet__numbers" id="sheetNumeros"></div>
+        <div class="vender-sheet__total">
+            <span class="text-muted small">Total a registrar</span>
+            <span class="vender-sheet__total-value" id="sheetTotal">$0</span>
+        </div>
+    </div>
+    <div class="vender-sheet__footer">
+        <input type="radio" class="btn-check d-none" checked name="metodoPagoMobile" id="pagoEfecMob" value="Venta Manual">
+        <button type="button" class="btn btn-success w-100 fw-bold rounded-pill vender-sheet__confirm" id="btnCompletarVentaMobile" onclick="confirmarVentaDesdeSheet()">
+            CONFIRMAR VENTA
+        </button>
+    </div>
+</aside>
+
 
 <?php
+require_once ROOT_PATH . '/bootstrap/container.php';
+
+use App\Application\Pricing\RaffleQuantityPricing;
+
+$venderPricingJson = json_encode(
+    RaffleQuantityPricing::fromConfig(AppContainer::get()->config())->toPublicArray(),
+    JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP
+);
+
 $extra_js = '
 <link href="' . ASSETS_URL . '/libs/select2/css/select2.min.css" rel="stylesheet" />
 <link href="' . ASSETS_URL . '/libs/select2/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>window.VENDER_PRICING = ' . $venderPricingJson . ';</script>
+<script src="' . ASSETS_URL . '/js/money-cop.js?v=1"></script>
+<script src="' . ASSETS_URL . '/js/admin-mobile.js?v=18"></script>
 <script src="' . ASSETS_URL . '/libs/select2/js/select2.min.js"></script>
 <script src="' . ASSETS_URL . '/js/departamentos-ciudades.js"></script>
-<script src="' . ASSETS_URL . '/js/vender.js?v=6"></script> 
+<script src="' . ASSETS_URL . '/js/cr-grilla-numeros.js?v=2"></script>
+<script src="' . ASSETS_URL . '/js/vender.js?v=18"></script>
 ';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>

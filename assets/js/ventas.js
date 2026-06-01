@@ -1,23 +1,25 @@
-/**
- * ventas.js - Gestión Blindada y Completa
- */
-
-// 1. DECLARACIÓN DE VARIABLES GLOBALES (VITAL)
 let paginaActual = 1;
 const registrosPorPagina = 10;
 const VENTAS_ENDPOINT = '/front/ajax/ventas.ajax.php';
 
+function formatVendedorVenta(emailAdmin) {
+    const e = String(emailAdmin ?? 'Sistema').trim();
+    return e || 'Sistema';
+}
+
+function ventaNombreCompleto(v) {
+    return `${v.name_customer || ''} ${v.lastname_customer || ''}`.trim();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     
-    // Cargas iniciales de selects
-    //cargarRifasSelect();
+
     cargarAdminsSelect();
     cargarOrigenesSelect();
     
-    // Cargar Ventas Iniciales
+
     cargarVentas();
 
-    // Eventos de filtros
     const filtrosIds = ['filterMetodoPago', 'filterAdmin', 'filterRifa', 'filterOrigen', 'filterPeriodo'];
     filtrosIds.forEach(id => {
         document.getElementById(id)?.addEventListener('change', () => {
@@ -26,13 +28,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Buscador
     document.getElementById('searchVentas')?.addEventListener('input', debounce(() => {
         paginaActual = 1;
         cargarVentas();
     }, 600));
 
-    // Fechas manuales
     ['fecha_inicio', 'fecha_fin'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', function() {
             if (this.value !== "") document.getElementById('filterPeriodo').value = '';
@@ -45,11 +45,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function cargarVentas() {
-    // Activar Preloader
+
     if (typeof showPreloader === 'function') showPreloader();
 
     const tbody = document.getElementById('bodyTabla');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5">Cargando datos...</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5">Cargando datos...</td></tr>`;
 
     try {
         const fd = new FormData();
@@ -57,7 +57,7 @@ async function cargarVentas() {
         fd.append('page', paginaActual);
         fd.append('limit', registrosPorPagina);
         
-        // Captura de filtros
+
         fd.append('search', document.getElementById('searchVentas')?.value || '');
         fd.append('id_raffle', document.getElementById('filterRifa')?.value || '');
         fd.append('id_admin', document.getElementById('filterAdmin')?.value || '');
@@ -67,19 +67,19 @@ async function cargarVentas() {
         fd.append('fecha_fin', document.getElementById('fecha_fin')?.value || '');
         fd.append('source_sale', document.getElementById('filterOrigen')?.value || '');
 
-        const res = await fetch(VENTAS_ENDPOINT, { method: 'POST', body: fd });
-        const data = await res.json();
+        const data = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
 
         if (data.success) {
             const ventas = Array.isArray(data.data) ? data.data : (data.data ? [data.data] : []);
             renderTabla(ventas);
-            actualizarPaginacion(data.total); 
+            actualizarPaginacion(data.total);
         } else {
             renderTabla([]);
+            adminNotifyError(adminExtractMessage(data, 'No se pudieron cargar las ventas.'));
         }
     } catch (e) {
-        console.error("Error en cargarVentas:", e);
         renderTabla([]);
+        adminNotifyError(e instanceof Error ? e.message : 'No se pudieron cargar las ventas.');
     } finally {
         if (typeof hidePreloader === 'function') hidePreloader();
     }
@@ -90,15 +90,16 @@ function renderTabla(ventas) {
     if (!tbody) return;
 
     if (ventas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">No se encontraron registros</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">No se encontraron registros</td></tr>`;
         return;
     }
 
-tbody.innerHTML = ventas.map(v => {
+    tbody.innerHTML = ventas.map(v => renderVentaRow(v)).join('');
+}
 
-
-    // Fecha guardada como hora local Colombia (naive); mostrar siempre en America/Bogota (no en la zona del navegador).
-    const f = new Date(String(v.date_created_sale).replace(' ', 'T') + '-05:00');
+function ventaDatos(v) {
+    const raw = v.date_created_sale ? String(v.date_created_sale).replace(' ', 'T') + '-05:00' : null;
+    const f = raw ? new Date(raw) : new Date();
     const opts = { timeZone: 'America/Bogota' };
     const fecha = f.toLocaleDateString('es-CO', opts);
     const hora = f.toLocaleTimeString('es-CO', {
@@ -107,49 +108,135 @@ tbody.innerHTML = ventas.map(v => {
         minute: '2-digit',
         hour12: true,
     });
-        
-        const inicial = v.name_customer ? v.name_customer.charAt(0).toUpperCase() : 'C';
-        const badgeClass = v.payment_method_sale === 'Venta Manual' 
-            ? 'bg-success-subtle text-success border-success-subtle' 
-            : 'bg-primary-subtle text-primary border-primary-subtle';
-        const source = (v.source_sale ?? '').toString().trim().toLowerCase();
-        
-        // DESPUÉS ✓
-        const sourceText = (source && source !== 'null')
-            ? source
-            : 'N/A';
-    
-        return `
-        <tr class="align-middle border-bottom hover-shadow">
-            <td class="py-3 ps-3">
-                <div class="d-flex">
-                    <div class="rounded-circle bg-light border d-flex justify-content-center align-items-center text-secondary fw-bold me-3 flex-shrink-0" 
-                         style="width: 42px; height: 42px; font-size: 1.1rem;">
-                        ${inicial}
-                    </div>
-                    <div class="d-flex flex-column" style="line-height: 1.3;">
-                        <span class="fw-bold text-dark text-capitalize">${v.name_customer} ${v.lastname_customer}</span>
-                        <div class="text-muted small mt-1">
-                            <span class="me-2"><i class="ti ti-phone"></i> ${v.phone_customer || '--'}</span>
-                        </div>
-                        <small class="text-muted fst-italic" style="font-size: 0.75rem;">
-                            <i class="ti ti-user"></i> ${v.email_admin || 'Sistema'}
-                            &nbsp;·&nbsp;<i class="ti ti-world"></i> ${sourceText}
-                        </small>
-                    </div>
-                </div>
-            </td>
-            <td><span class="font-monospace bg-light text-primary px-2 py-1 rounded border" style="font-size: 0.85rem;">${v.code_sale}</span></td>
-            <td><span class="fw-medium text-dark d-block">${v.quantity_sale} Núms</span><small class="text-muted text-truncate d-block" style="max-width: 150px;">${v.title_raffle}</small></td>
-            <td><span class="fw-bold text-dark">$${Number(v.total_sale).toLocaleString('es-CO')}</span></td>
-            <td><span class="badge ${badgeClass} border px-3 py-2 rounded-pill">${v.payment_method_sale}</span></td>
-            <td><div class="d-flex flex-column text-muted"><span class="text-dark fw-medium">${fecha}</span><span style="font-size: 0.85rem;">${hora}</span></div></td>
-            <td class="py-3 text-end pe-3">
-                <button class="btn btn-icon btn-sm btn-outline-primary border-0 rounded-circle shadow-sm" onclick="verRecibo(${v.id_sale})" title="Ver Detalle" style="width: 32px; height: 32px;"><i class="ti ti-eye fs-7"></i></button>
-                <button class="btn btn-icon btn-sm btn-outline-danger border-0 rounded-circle shadow-sm ms-1" onclick="anularVenta(${v.id_sale})" title="Anular venta" style="width: 32px; height: 32px;"><i class="ti ti-trash fs-7"></i></button>
-            </td>
-        </tr>`;
-    }).join('');
+    const inicial = v.name_customer ? v.name_customer.charAt(0).toUpperCase() : 'C';
+    const nombre = ventaNombreCompleto(v);
+    const vendedor = formatVendedorVenta(v.email_admin);
+    const origen = String(v.source_sale ?? '').trim();
+    const badgeClass = v.payment_method_sale === 'Venta Manual'
+        ? 'bg-success-subtle text-success border-success-subtle'
+        : 'bg-primary-subtle text-primary border-primary-subtle';
+    const qtyLabel = `${v.quantity_sale} núm${v.quantity_sale > 1 ? 's' : ''}`;
+    const totalLabel = `$${Number(v.total_sale).toLocaleString('es-CO')}`;
+    return { fecha, hora, inicial, nombre, vendedor, origen, badgeClass, qtyLabel, totalLabel };
+}
+
+function renderVentaClientMobile(d, v) {
+    return `
+    <div class="admin-card-head d-lg-none">
+        ${adminClientMobileHead({
+            initial: d.inicial,
+            name: d.nombre,
+            phone: v.phone_customer,
+            extraHtml: adminVendedorOrigenLines(formatVendedorShort(d.vendedor), d.origen),
+        })}
+        <div class="admin-card-head__status-row">
+            <span class="badge ${d.badgeClass} border px-2 py-1 rounded-pill">${adminEscapeHtml(v.payment_method_sale)}</span>
+        </div>
+        <div class="admin-card-head__meta">
+            <span class="card-meta-chip card-meta-chip--qty">${adminEscapeHtml(d.qtyLabel)}</span>
+            <span class="card-meta-chip card-meta-chip--total">${adminEscapeHtml(d.totalLabel)}</span>
+        </div>
+        <div class="admin-card-head__rifa">
+            <span class="cell-rifa-name">${adminEscapeHtml(v.title_raffle || '—')}</span>
+        </div>
+        <div class="admin-card-head__code-fecha d-lg-none">
+            ${adminTokenChipBlock(v.code_sale)}
+            ${adminFechaCompact(d.fecha, d.hora)}
+        </div>
+    </div>`;
+}
+
+function formatVendedorShort(emailAdmin) {
+    const e = String(emailAdmin ?? 'Sistema').trim() || 'Sistema';
+    const at = e.indexOf('@');
+    return at > 0 ? e.slice(0, at) : e;
+}
+
+function renderVentaClientDesktop(d, v) {
+    const vendedorShort = adminEscapeHtml(formatVendedorShort(d.vendedor));
+    const origen = String(d.origen ?? '').trim();
+    const metaLine = origen
+        ? `<small class="text-muted fst-italic venta-meta-desktop">
+            <i class="ti ti-user"></i> ${vendedorShort}
+            &nbsp;·&nbsp;<i class="ti ti-world"></i> ${adminEscapeHtml(origen)}
+           </small>`
+        : `<small class="text-muted fst-italic venta-meta-desktop">
+            <i class="ti ti-user"></i> ${vendedorShort}
+           </small>`;
+
+    return `
+    <div class="d-none d-lg-flex">
+        <div class="rounded-circle bg-light border d-flex justify-content-center align-items-center text-secondary fw-bold me-3 flex-shrink-0 venta-avatar-desktop">
+            ${adminEscapeHtml(d.inicial)}
+        </div>
+        <div class="d-flex flex-column venta-client-desktop-col">
+            <span class="fw-bold text-dark text-capitalize">${adminEscapeHtml(d.nombre)}</span>
+            <div class="text-muted small mt-1">
+                <span class="me-2"><i class="ti ti-phone"></i> ${adminEscapeHtml(v.phone_customer || '—')}</span>
+            </div>
+            ${metaLine}
+        </div>
+    </div>`;
+}
+
+function renderVentaActionsMobile(id) {
+    return `
+    <div class="d-lg-none">
+        <div class="btn-group btn-group-sm shadow-sm w-100 venta-mobile-actions" role="group">
+            <button type="button" class="btn btn-outline-primary flex-fill" onclick="verRecibo(${id})" title="Ver Detalle">
+                <i class="ti ti-eye"></i> Ver
+            </button>
+            <button type="button" class="btn btn-outline-secondary flex-fill" onclick="gestionarVenta(${id})" title="Gestionar venta">
+                <i class="ti ti-settings"></i> Gestionar
+            </button>
+        </div>
+    </div>`;
+}
+
+function renderVentaActionsDesktop(id) {
+    return `
+    <button type="button" class="btn btn-icon btn-sm btn-outline-primary border-0 rounded-circle shadow-sm d-none d-lg-inline-flex venta-action-btn"
+        onclick="verRecibo(${id})" title="Ver Detalle">
+        <i class="ti ti-eye fs-7"></i>
+    </button>
+    <button type="button" class="btn btn-icon btn-sm btn-outline-secondary border-0 rounded-circle shadow-sm ms-1 d-none d-lg-inline-flex venta-action-btn"
+        onclick="gestionarVenta(${id})" title="Gestionar venta">
+        <i class="ti ti-settings fs-7"></i>
+    </button>`;
+}
+
+function renderVentaRow(v) {
+    const d = ventaDatos(v);
+    return `
+    <tr class="align-middle border-bottom card-row-admin card-row-venta venta-table-row">
+        <td class="py-3 ps-3 mobile-card-head">
+            ${renderVentaClientMobile(d, v)}
+            ${renderVentaClientDesktop(d, v)}
+        </td>
+        <td class="d-none d-lg-table-cell py-3">
+            <span class="font-monospace bg-light text-primary px-2 py-1 rounded border venta-code-chip">${adminEscapeHtml(v.code_sale)}</span>
+        </td>
+        <td class="d-none d-lg-table-cell py-3">
+            <span class="fw-medium text-dark d-block">${adminEscapeHtml(d.qtyLabel)}</span>
+            <small class="text-muted text-truncate d-block venta-rifa-truncate">${adminEscapeHtml(v.title_raffle || '—')}</small>
+        </td>
+        <td class="d-none d-lg-table-cell py-3">
+            <span class="fw-bold text-dark">${adminEscapeHtml(d.totalLabel)}</span>
+        </td>
+        <td class="d-none d-lg-table-cell py-3">
+            <span class="badge ${d.badgeClass} border px-3 py-2 rounded-pill">${adminEscapeHtml(v.payment_method_sale)}</span>
+        </td>
+        <td class="d-none d-lg-table-cell py-3">
+            <div class="d-flex flex-column text-muted">
+                <span class="text-dark fw-medium">${adminEscapeHtml(d.fecha)}</span>
+                <span class="venta-hora-desktop">${adminEscapeHtml(d.hora)}</span>
+            </div>
+        </td>
+        <td class="py-3 text-end pe-3 mobile-card-actions">
+            ${renderVentaActionsMobile(v.id_sale)}
+            ${renderVentaActionsDesktop(v.id_sale)}
+        </td>
+    </tr>`;
 }
 
 function actualizarPaginacion(totalItems) {
@@ -187,35 +274,45 @@ function cambiarPagina(p) {
     window.scrollTo(0, 0);
 }
 
-// --- AUXILIARES ---
-
 async function cargarRifasSelect() {
-    const fd = new FormData(); fd.append('action', 'obtener_rifas');
-    const res = await fetch(VENTAS_ENDPOINT, { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.success) {
-        const sel = document.getElementById('filterRifa');
-        if (sel) sel.innerHTML = '<option value="">Todas las rifas</option>' + data.data.map(r => `<option value="${r.id_raffle}">${r.title_raffle}</option>`).join('');
+    try {
+        const fd = new FormData();
+        fd.append('action', 'obtener_rifas');
+        const data = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
+        if (data.success) {
+            const sel = document.getElementById('filterRifa');
+            if (sel) sel.innerHTML = '<option value="">Todas las rifas</option>' + data.data.map(r => `<option value="${r.id_raffle}">${r.title_raffle}</option>`).join('');
+        } else {
+            adminNotifyError(adminExtractMessage(data, 'No se pudieron cargar las rifas.'));
+        }
+    } catch (e) {
+        adminNotifyError(e instanceof Error ? e.message : 'No se pudieron cargar las rifas.');
     }
 }
 
 async function cargarAdminsSelect() {
-    const fd = new FormData(); fd.append('action', 'obtener_admins');
-    const res = await fetch(VENTAS_ENDPOINT, { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.success) {
-        const sel = document.getElementById('filterAdmin');
-        if (sel) sel.innerHTML = '<option value="">Todos los admins</option>' + data.data.map(a => `<option value="${a.id_admin}">${a.email_admin}</option>`).join('');
+    try {
+        const fd = new FormData(); fd.append('action', 'obtener_admins');
+        const data = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
+        if (data.success) {
+            const sel = document.getElementById('filterAdmin');
+            if (sel) sel.innerHTML = '<option value="">Todos los admins</option>' + data.data.map(a => `<option value="${a.id_admin}">${a.email_admin}</option>`).join('');
+        }
+    } catch (e) {
+        adminNotifyError(e instanceof Error ? e.message : 'No se pudieron cargar los vendedores.');
     }
 }
 
 async function cargarOrigenesSelect() {
-    const fd = new FormData(); fd.append('action', 'obtener_origenes');
-    const res = await fetch(VENTAS_ENDPOINT, { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.success && data.data) {
-        const sel = document.getElementById('filterOrigen');
-        if (sel) sel.innerHTML = '<option value="">Todos los orígenes</option>' + data.data.map(o => `<option value="${o}">${o}</option>`).join('');
+    try {
+        const fd = new FormData(); fd.append('action', 'obtener_origenes');
+        const data = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
+        if (data.success && data.data) {
+            const sel = document.getElementById('filterOrigen');
+            if (sel) sel.innerHTML = '<option value="">Todos los orígenes</option>' + data.data.map(o => `<option value="${o}">${o}</option>`).join('');
+        }
+    } catch (e) {
+        adminNotifyError(e instanceof Error ? e.message : 'No se pudieron cargar los orígenes.');
     }
 }
 
@@ -224,18 +321,42 @@ function debounce(f, w) {
     return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), w); };
 }
 
-function verRecibo(id) {
-    const fd = new FormData();
-    fd.append('action', 'detalle_venta');
-    fd.append('id_sale', id);
-    fetch(VENTAS_ENDPOINT, { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(res => {
-            if (res.success) {
-                document.getElementById('cuerpoRecibo').innerHTML = res.html_recibo;
-                new bootstrap.Modal(document.getElementById('modalRecibo')).show();
-            }
-        });
+async function verRecibo(id) {
+    try {
+        const fd = new FormData();
+        fd.append('action', 'detalle_venta');
+        fd.append('id_sale', id);
+        const res = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
+        if (res.success) {
+            document.getElementById('cuerpoRecibo').innerHTML = res.html_recibo;
+            new bootstrap.Modal(document.getElementById('modalRecibo')).show();
+        } else {
+            adminNotifyError(adminExtractMessage(res, 'No se pudo cargar el recibo.'));
+        }
+    } catch (e) {
+        adminNotifyError(e instanceof Error ? e.message : 'No se pudo cargar el recibo.');
+    }
+}
+
+function gestionarVenta(id) {
+    Swal.fire({
+        title: 'Gestionar venta',
+        text: 'Seleccione una acción',
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '<i class="ti ti-trash"></i> Anular venta',
+        denyButtonText: '<i class="ti ti-scissors"></i> Anulación parcial',
+        cancelButtonText: 'Cerrar',
+        confirmButtonColor: '#dc3545',
+        denyButtonColor: '#fd7e14',
+    }).then(result => {
+        if (result.isConfirmed) {
+            anularVenta(id);
+        } else if (result.isDenied) {
+            anularParcialVenta(id);
+        }
+    });
 }
 
 function anularVenta(id) {
@@ -285,3 +406,69 @@ function anularVenta(id) {
     });
 }
 
+async function anularParcialVenta(id) {
+    try {
+        const fd = new FormData();
+        fd.append('action', 'detalle_venta');
+        fd.append('id_sale', id);
+        const data = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
+        if (!data.success) {
+            Swal.fire('Error', adminExtractMessage(data, 'No se pudo cargar la venta'), 'error');
+            return;
+        }
+
+        const tmp = document.createElement('div');
+        tmp.innerHTML = data.html_recibo || '';
+        const ticketEls = tmp.querySelectorAll('[data-ticket-id]');
+        let optionsHtml = '';
+        if (ticketEls.length) {
+            ticketEls.forEach(el => {
+                optionsHtml += `<label class="d-block mb-1"><input type="checkbox" class="ticket-cancel-check" value="${el.getAttribute('data-ticket-id')}"> ${el.textContent.trim()}</label>`;
+            });
+        } else {
+            optionsHtml = '<p class="text-muted small">No se encontraron IDs de tickets en el recibo.</p>';
+        }
+
+        const result = await Swal.fire({
+            title: 'Anulación parcial',
+            html: `<p class="small text-muted">Selecciona los números a liberar. El resto permanece en la venta.</p>${optionsHtml}`,
+            showCancelButton: true,
+            confirmButtonText: 'Anular seleccionados',
+            preConfirm: () => {
+                const checks = document.querySelectorAll('.ticket-cancel-check:checked');
+                const ids = [...checks].map(c => c.value);
+                if (!ids.length) {
+                    Swal.showValidationMessage('Seleccione al menos un número');
+                    return false;
+                }
+                return ids;
+            }
+        });
+
+        if (!result.isConfirmed) return;
+
+        const fd2 = new FormData();
+        fd2.append('action', 'anular_parcial');
+        fd2.append('id_sale', id);
+        fd2.append('csrf_token', window.APP_CSRF_TOKEN || '');
+        result.value.forEach(tid => fd2.append('ticket_ids[]', tid));
+
+        const d2 = await adminFetchJson(VENTAS_ENDPOINT, {
+            body: fd2,
+            withCsrf: true,
+            headers: { 'X-CSRF-Token': window.APP_CSRF_TOKEN || '' },
+        });
+
+        if (d2.success) {
+            const totalMsg = d2.total_sale != null
+                ? ` Nuevo total: $${Number(d2.total_sale).toLocaleString('es-CO')}.`
+                : '';
+            Swal.fire('OK', `Liberados ${d2.released || 0} número(s). Quedan ${d2.remaining || 0}.${totalMsg}`, 'success');
+            cargarVentas();
+        } else {
+            Swal.fire('Error', adminExtractMessage(d2, 'No se pudo anular'), 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', e instanceof Error ? e.message : 'Error de conexión', 'error');
+    }
+}

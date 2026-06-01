@@ -12,88 +12,59 @@ include_once ROOT_PATH . "/includes/head.php";
         <?php include_once ROOT_PATH . "/includes/header.php" ?>
 
         <div class="body-wrapper-inner">
-            <div class="container-fluid" style="padding: 0.5rem;">
+            <div class="container-fluid transfer-page py-3">
 
-                <!-- FILTROS -->
+                <div class="transfer-page-header mb-3">
+                    <div>
+                        <h2 class="mb-1 fw-bold"><i class="ti ti-building-bank me-1"></i>Revisión de transferencias</h2>
+                        <p class="text-muted small mb-0">Comprobante visible en cada tarjeta · 10 por página · más recientes primero.</p>
+                    </div>
+                    <span id="transferPendingBadge" class="badge transfer-pending-badge d-none">0 pendientes</span>
+                </div>
+
                 <div class="card border-0 shadow-sm mb-3">
                     <div class="card-body py-3">
                         <div class="row g-2 align-items-end">
-
-                            <div class="col-md-3">
-                                <label class="form-label small fw-bold">Buscador</label>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold mb-1">Buscar</label>
                                 <input type="text" id="searchTransfer" class="form-control form-control-sm"
-                                    placeholder="Código, cliente...">
+                                    placeholder="Código, cliente, teléfono…">
                             </div>
-
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold">Fechas</label>
+                                <label class="form-label small fw-bold mb-1">Desde / Hasta</label>
                                 <div class="input-group input-group-sm">
                                     <input type="date" id="fecha_inicio" class="form-control">
                                     <input type="date" id="fecha_fin" class="form-control">
                                 </div>
                             </div>
-
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold">Estado</label>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">Estado</label>
                                 <select id="filterEstado" class="form-select form-select-sm">
+                                    <option value="1" selected>Pendiente</option>
                                     <option value="">Todos</option>
-                                    <option value="1">Pendiente</option>
                                     <option value="2">Aprobado</option>
                                     <option value="3">Rechazado</option>
                                     <option value="4">Error</option>
                                 </select>
                             </div>
-
                             <div class="col-md-2">
-                                <label class="form-label small fw-bold">Rifa</label>
-                                <select id="filterRifa" class="form-select form-select-sm">
-                                    <option value="">Todas</option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-2">
-                                <button class="btn btn-outline-secondary btn-sm w-100"
-                                    onclick="limpiarFiltrosTransfer()">
-                                    <i class="ti ti-refresh"></i>
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltrosTransfer()">
+                                    <i class="ti ti-refresh me-1"></i> Limpiar
                                 </button>
                             </div>
-
                         </div>
                     </div>
                 </div>
 
-                <!-- TABLA -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 600px;">
-                            <table class="table table-hover table-striped align-middle mb-0">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th>Cliente</th>
-                                        <th>Código</th>
-                                        <th>Cantidad</th>
-                                        <th>Total</th>
-                                        <th>Comprobante</th>
-                                        <th>Estado</th>
-                                        <th>Fecha y hora</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
+                <div id="transferCola" class="transfer-cola">
+                    <div class="text-center py-5 text-muted">Cargando…</div>
+                </div>
 
-                                <tbody id="bodyTabla">
-                                    <tr>
-                                        <td colspan="8" class="text-center py-5">Cargando...</td>
-                                    </tr>
-                                </tbody>
-
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="card-footer bg-white border-top py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small id="infoPaginacion"></small>
-                            <ul class="pagination pagination-sm mb-0" id="contenedorPaginacion"></ul>
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-footer bg-white border-top py-3 rounded-bottom">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <small class="text-muted" id="infoPaginacionTransfer"></small>
+                            <nav><ul class="pagination pagination-sm mb-0" id="contenedorPaginacionTransfer"></ul></nav>
                         </div>
                     </div>
                 </div>
@@ -103,15 +74,15 @@ include_once ROOT_PATH . "/includes/head.php";
     </div>
 </div>
 
-<!-- MODAL COMPROBANTE -->
 <div class="modal fade" id="modalComprobante" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Comprobante</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title"><i class="ti ti-photo me-1"></i> Comprobante de pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body text-center" id="cuerpoComprobante"></div>
+            <div class="modal-body text-center p-2 bg-light" id="cuerpoComprobante"></div>
+            <div class="modal-footer d-none" id="modalComprobanteActions"></div>
         </div>
     </div>
 </div>
@@ -121,7 +92,7 @@ include_once ROOT_PATH . "/includes/head.php";
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Recibo</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="cuerpoRecibo"></div>
         </div>
@@ -129,6 +100,6 @@ include_once ROOT_PATH . "/includes/head.php";
 </div>
 
 <?php
-$extra_js = '<script src="' . ASSETS_URL . '/js/transferencias.js?v=2"></script>';
+$extra_js = '<script src="' . ASSETS_URL . '/js/admin-mobile.js?v=16"></script><script src="' . ASSETS_URL . '/js/transferencias.js?v=14"></script>';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>

@@ -69,12 +69,26 @@ function bootstrapPrivateStorage(string $publicRoot): void
     foreach ([
         LOG_PATH,
         LOG_PATH . DIRECTORY_SEPARATOR . 'sessions',
-        DATA_PATH,
-        DATA_PATH . DIRECTORY_SEPARATOR . 'cache',
-        DATA_PATH . DIRECTORY_SEPARATOR . 'locks',
     ] as $dir) {
         ensureWritableDirectory($dir);
     }
+
+    ensureWritableDirectory(DATA_PATH, 0755);
+    @chmod(DATA_PATH, 0755);
+
+    foreach ([
+        DATA_PATH . DIRECTORY_SEPARATOR . 'cache',
+        DATA_PATH . DIRECTORY_SEPARATOR . 'webhooks' . DIRECTORY_SEPARATOR . 'pending',
+        DATA_PATH . DIRECTORY_SEPARATOR . 'webhooks' . DIRECTORY_SEPARATOR . 'processed',
+        DATA_PATH . DIRECTORY_SEPARATOR . 'webhooks' . DIRECTORY_SEPARATOR . 'error',
+    ] as $dir) {
+        ensureWritableDirectory($dir, 0777);
+        @chmod($dir, 0777);
+    }
+
+    // Locks: Apache/PHP-FPM (www-data) debe poder crear y bloquear archivos aquí.
+    ensureWritableDirectory(DATA_PATH . DIRECTORY_SEPARATOR . 'locks', 0777);
+    @chmod(DATA_PATH . DIRECTORY_SEPARATOR . 'locks', 0777);
 }
 
 function ensureWritableDirectory(string $path, int $mode = 0750): bool
@@ -85,6 +99,8 @@ function ensureWritableDirectory(string $path, int $mode = 0750): bool
 
             return false;
         }
+    } elseif ($mode !== 0750) {
+        @chmod($path, $mode);
     }
 
     if (!is_writable($path)) {
@@ -113,7 +129,8 @@ function appDataPath(string $relative = ''): string
         ? DATA_PATH
         : resolveDataDir(defined('ROOT_PATH') ? (string)ROOT_PATH : dirname(__DIR__));
 
-    ensureWritableDirectory($base);
+    ensureWritableDirectory($base, 0755);
+    @chmod($base, 0755);
 
     $relative = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relative), DIRECTORY_SEPARATOR);
     if ($relative === '') {
@@ -122,7 +139,14 @@ function appDataPath(string $relative = ''): string
 
     $dir = dirname($relative);
     if ($dir !== '.' && $dir !== '') {
-        ensureWritableDirectory($base . DIRECTORY_SEPARATOR . $dir);
+        $dirNorm = str_replace('\\', '/', $dir);
+        $mode = (str_starts_with($dirNorm, 'locks') || str_starts_with($dirNorm, 'webhooks'))
+            ? 0777
+            : 0750;
+        ensureWritableDirectory($base . DIRECTORY_SEPARATOR . $dir, $mode);
+        if ($mode === 0777) {
+            @chmod($base . DIRECTORY_SEPARATOR . $dir, 0777);
+        }
     }
 
     return $base . DIRECTORY_SEPARATOR . $relative;

@@ -24,6 +24,30 @@ try {
     }
 
     try {
+        $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        $rlFile = appDataPath('cache/ratelimit_login_' . preg_replace('/[^a-z0-9_-]/i', '_', $ip) . '.json');
+        $now = time();
+        $rl = ['count' => 0, 'reset' => $now + 900];
+        if (is_file($rlFile)) {
+            $decoded = json_decode((string)file_get_contents($rlFile), true);
+            if (is_array($decoded)) {
+                $rl = $decoded;
+            }
+        }
+        if ($now > (int)($rl['reset'] ?? 0)) {
+            $rl = ['count' => 0, 'reset' => $now + 900];
+        }
+        $rl['count'] = (int)($rl['count'] ?? 0) + 1;
+        @file_put_contents($rlFile, json_encode($rl), LOCK_EX);
+        if ($rl['count'] > 15) {
+            header('Location: ../dash.php?error=rate_limit');
+            exit;
+        }
+    } catch (Throwable) {
+        /* no bloquear login por fallo de rate limit */
+    }
+
+    try {
         $admin = Db::fetchOne(
             'SELECT id_admin, email_admin, password_admin, rol_admin, token_admin, token_exp_admin, id_branch, status_admin
              FROM admins WHERE email_admin = :e LIMIT 1',
@@ -65,6 +89,7 @@ try {
 
     $_SESSION['user_id'] = (int)$admin->id_admin;
     $_SESSION['user_role'] = $admin->rol_admin ?? 'vendedor';
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     $_SESSION['token_admin'] = $admin->token_admin ?? bin2hex(random_bytes(16));
     unset($_SESSION['token_exp_admin']);
     $_SESSION['email_admin'] = $admin->email_admin ?? $email;

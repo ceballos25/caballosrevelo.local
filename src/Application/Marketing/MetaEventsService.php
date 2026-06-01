@@ -18,7 +18,7 @@ final class MetaEventsService
             'track_event' => $this->trackEvent($payload),
             'list_events' => [
                 'success' => true,
-                'events' => MetaConversionsApi::STANDARD_EVENTS,
+                'events' => MetaConversionsApi::BROWSER_TRACK_EVENTS,
                 'pixel_id' => MetaConversionsApi::pixelId(),
                 'capi_enabled' => defined('META_CAPI_ENABLED') ? (bool)\META_CAPI_ENABLED : true,
             ],
@@ -32,41 +32,46 @@ final class MetaEventsService
      */
     private function trackEvent(array $payload): array
     {
-        if (!MetaConversionsApi::isConfigured()) {
+        if (!MetaConversionsApi::isPixelConfigured()) {
             return ['success' => false, 'message' => 'Meta Pixel no configurado'];
         }
 
+        if (!MetaConversionsApi::isCapiConfigured()) {
+            return ['success' => false, 'message' => 'Meta Conversions API no configurada (falta META_ACCESS_TOKEN)'];
+        }
+
         $eventName = trim((string)($payload['event_name'] ?? ''));
-        if (!MetaConversionsApi::isStandardEvent($eventName)) {
-            return ['success' => false, 'message' => 'Evento Meta no válido: ' . $eventName];
+        if (!MetaConversionsApi::isAllowedTrackEvent($eventName)) {
+            return ['success' => false, 'message' => 'Evento Meta no permitido: ' . $eventName];
+        }
+
+        $guard = new MetaPixelGuard();
+
+        if ($eventName === 'PageView') {
+            if (!$guard->shouldSendPageView()) {
+                return ['success' => true, 'event_name' => 'PageView', 'event_id' => '', 'capi_sent' => false, 'skipped' => true];
+            }
         }
 
         $customData = $this->decodeJsonField($payload['custom_data'] ?? '{}');
         $userInput = $this->decodeJsonField($payload['user_data'] ?? '{}');
-        $customData = MetaConversionsApi::sanitizeCustomData($customData);
+        if ($eventName === 'Purchase') {
+            $customData = MetaConversionsApi::sanitizePurchaseCustomData($customData);
+        } else {
+            $customData = MetaConversionsApi::sanitizeCustomData($customData);
+        }
 
         $eventRef = trim((string)($payload['event_ref'] ?? ''));
-        if ($eventRef === '') {
-            $orderId = trim((string)($customData['order_id'] ?? ''));
-            if ($orderId !== '') {
-                $eventRef = $orderId;
-            } elseif (!empty($customData['content_ids']) && is_array($customData['content_ids'])) {
-                $eventRef = implode('-', $customData['content_ids']);
-            }
-        }
         $eventRef = MetaConversionsApi::sanitizeEventReference($eventRef !== '' ? $eventRef : null);
 
-        $userData = MetaConversionsApi::userDataFromInput($userInput);
-
-        if ($eventName === 'Search') {
-            $searchPhone = preg_replace('/\D+/', '', (string)($customData['search_string'] ?? ''));
-            if (strlen($searchPhone) >= 10) {
-                $userData = array_merge(
-                    $userData,
-                    MetaConversionsApi::userDataFromInput(['phone_customer' => $searchPhone])
-                );
+        if ($eventName === 'Purchase') {
+            $saleCode = trim((string)($eventRef ?? ''));
+            if ($saleCode !== '' && !$guard->shouldSendPurchase($saleCode)) {
+                return ['success' => true, 'event_name' => 'Purchase', 'event_id' => '', 'capi_sent' => false, 'skipped' => true];
             }
         }
+
+        $userData = MetaConversionsApi::userDataFromInput($userInput);
 
         if (!empty($payload['fbp'])) {
             $userData['fbp'] = trim((string)$payload['fbp']);
@@ -82,6 +87,16 @@ final class MetaEventsService
             $userData,
             true
         );
+
+        if ($eventName === 'PageView' && ($result['sent'] ?? false)) {
+            $guard->markPageViewSent();
+        }
+        if ($eventName === 'Purchase' && ($result['sent'] ?? false)) {
+            $saleCode = trim((string)($eventRef ?? ''));
+            if ($saleCode !== '') {
+                $guard->markPurchaseSent($saleCode);
+            }
+        }
 
         return [
             'success' => true,

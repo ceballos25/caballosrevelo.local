@@ -1,37 +1,15 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
-require_once "../../config/config.php";
-require_once "../../controllers/rifas.controller.php";
+declare(strict_types=1);
 
-$action = $_POST['action'] ?? '';
-$result = ['success' => false, 'message' => 'Acción no válida'];
+ob_start();
 
-try {
-    switch ($action) {
-        // CASO NUEVO: Reutiliza la lógica existente forzando el estado
-        case 'obtener_activas': 
-            $_POST['status'] = 1; // Truco: Forzamos filtro de activos
-            // No necesitamos 'search', así que lo aseguramos vacío o lo dejamos como venga
-            $result = RifasController::obtenerRifas(); 
-            break;
+use App\Shared\Http\Request;
+use App\Shared\Http\Response;
 
-        // Casos existentes...
-        case 'obtener': 
-            $result = RifasController::obtenerRifas(); 
-            break;
-        case 'crear':   
-            $result = RifasController::crearRifa($_POST); 
-            break;
-        case 'actualizar': 
-            $result = RifasController::actualizarRifa($_POST); 
-            break;
-        case 'eliminar': 
-            $result = RifasController::eliminarRifa($_POST); 
-            break;
-    }
-} catch (Throwable $e) { 
-    $result = ['success' => false, 'message' => $e->getMessage()]; 
+/** @var \App\Shared\Routing\Router $router */
+$router = require dirname(__DIR__, 2) . '/bootstrap/app.php';
+$result = $router->dispatch(Request::fromGlobals());
+
+if ($result === null) {
+    Response::json(['success' => false, 'message' => 'Ruta no encontrada'], 404);
 }
-
-echo json_encode($result);
-?>

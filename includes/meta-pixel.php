@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use App\Application\Marketing\MetaConversionsApi;
+use App\Application\Marketing\MetaPixelGuard;
 
 function edts_meta_pixel_head(): void
 {
@@ -11,20 +12,27 @@ function edts_meta_pixel_head(): void
     }
     $rendered = true;
 
-    if (!MetaConversionsApi::isConfigured()) {
+    if (!MetaConversionsApi::isPixelConfigured()) {
         return;
     }
 
+    $guard = new MetaPixelGuard();
     $metaPixelId = MetaConversionsApi::pixelId();
-    $metaPageViewEventId = MetaConversionsApi::eventId(
-        'PageView',
-        (string)(session_id() ?: 'guest')
-            . '-' . md5((string)($_SERVER['REQUEST_URI'] ?? '/'))
-            . '-' . date('Ymd')
-    );
-    MetaConversionsApi::sendPageView($metaPageViewEventId);
+    $metaPageViewEventId = '';
+    $sendPageView = $guard->shouldSendPageView();
+    $sendCapiPageView = $sendPageView && MetaConversionsApi::isCapiConfigured();
+    $pageViewRef = (string)(session_id() ?: 'guest') . '-' . $guard->pageViewStorageKey();
+
+    if ($sendCapiPageView) {
+        $metaPageViewEventId = MetaConversionsApi::eventId('PageView', $pageViewRef);
+        if (MetaConversionsApi::sendPageView($metaPageViewEventId)) {
+            $guard->markPageViewSent();
+        }
+    } elseif ($sendPageView) {
+        $metaPageViewEventId = MetaConversionsApi::eventId('PageView', $pageViewRef);
+        $guard->markPageViewSent();
+    }
     ?>
-    <!-- Meta Pixel Code -->
     <script>
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -35,18 +43,20 @@ function edts_meta_pixel_head(): void
     s.parentNode.insertBefore(t,s)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', <?= json_encode($metaPixelId, JSON_UNESCAPED_SLASHES) ?>);
+    <?php if ($sendPageView && $metaPageViewEventId !== ''): ?>
     fbq('track', 'PageView', {}, {eventID: <?= json_encode($metaPageViewEventId, JSON_UNESCAPED_SLASHES) ?>});
+    <?php endif; ?>
     </script>
     <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=<?= htmlspecialchars($metaPixelId, ENT_QUOTES, 'UTF-8') ?>&ev=PageView&noscript=1"
     /></noscript>
-    <!-- End Meta Pixel Code -->
     <script>
     window.META_EVENTS_CONFIG = {
         enabled: true,
+        capiEnabled: <?= MetaConversionsApi::isCapiConfigured() ? 'true' : 'false' ?>,
         pixelId: <?= json_encode($metaPixelId, JSON_UNESCAPED_SLASHES) ?>,
         ajaxUrl: <?= json_encode(BASE_URL . '/front/ajax/meta.ajax.php', JSON_UNESCAPED_SLASHES) ?>,
-        standardEvents: <?= json_encode(MetaConversionsApi::STANDARD_EVENTS, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+        standardEvents: <?= json_encode(MetaConversionsApi::BROWSER_TRACK_EVENTS, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
     };
     </script>
     <?php

@@ -1,12 +1,17 @@
 <?php
 /**
- * WEBHOOK PUENTE (SERVIDOR PRINCIPAL)
- * - Recibe JSON reenviado desde marketing
+ * WEBHOOK PUENTE (SERVIDOR PRINCIPAL) — v2
+ * - Recibe JSON reenviado desde accesorios.caballosrevelo.com (service-payment-server)
  * - Valida firma HMAC
- * - Procesa aprobacion/rechazo con PaymentBackupsController
+ * - Persiste webhook en BD (archivos JSON en accesorios)
+ * - Procesa aprobación/rechazo con idempotencia
  */
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../controllers/paymentBackupsController.php';
+require_once __DIR__ . '/../bootstrap/container.php';
+
+use App\Application\Webhook\OpenPayBridgeSignatureException;
+use App\Application\Webhook\OpenPayBridgeSignatureValidator;
 
 function bridgeLog(string $message): void
 {
@@ -34,89 +39,17 @@ function unauthorized(string $reason): never
 
 function validateSignature(string $raw): void
 {
-    $secret = (string)env('OPENPAY_BRIDGE_SECRET', '');
-    if ($secret === '') {
-        unauthorized('secret vacio');
-    }
-
     $h = headersLower();
-    $sig = $h['x-bridge-signature'] ?? '';
-    $ts = $h['x-bridge-timestamp'] ?? '';
-
-    if ($sig === '' || $ts === '') {
-        unauthorized('faltan headers de firma');
+    try {
+        OpenPayBridgeSignatureValidator::validate(
+            $raw,
+            (string)env('OPENPAY_BRIDGE_SECRET', ''),
+            $h['x-bridge-signature'] ?? '',
+            $h['x-bridge-timestamp'] ?? ''
+        );
+    } catch (OpenPayBridgeSignatureException $e) {
+        unauthorized($e->reasonCode);
     }
-
-    if (!ctype_digit($ts)) {
-        unauthorized('timestamp invalido');
-    }
-
-    $now = time();
-    $tsInt = (int)$ts;
-    if (abs($now - $tsInt) > 600) {
-        unauthorized('timestamp fuera de ventana');
-    }
-
-    $expected = hash_hmac('sha256', $ts . '.' . $raw, $secret);
-    if (!hash_equals($expected, $sig)) {
-        unauthorized('firma invalida');
-    }
-}
-
-function processEvent(array $data): void
-{
-    $type = $data['type'] ?? null;
-    $tx = $data['transaction'] ?? null;
-    if (!$type || !$tx || empty($tx['order_id'])) {
-        bridgeLog('Datos incompletos');
-        http_response_code(200);
-        echo 'OK';
-        return;
-    }
-
-    $code = (string)$tx['order_id'];
-    $backup = PaymentBackupsController::obtenerPorCode($code);
-    if (!$backup) {
-        bridgeLog('Respaldo no encontrado: ' . $code);
-        http_response_code(200);
-        echo 'OK';
-        return;
-    }
-
-    if ((int)$backup['status_payment_backup'] !== 1) {
-        bridgeLog('YA PROCESADO status=' . $backup['status_payment_backup'] . ' code=' . $code . ' event=' . $type);
-        http_response_code(200);
-        echo 'OK';
-        return;
-    }
-
-    $approvedEvents = [
-        'charge.succeeded',
-        'order.completed',
-        'order.payment.received',
-    ];
-    $rejectedEvents = [
-        'charge.failed',
-        'charge.cancelled',
-        'charge.refunded',
-        'charge.rescored.to.decline',
-        'order.expired',
-        'order.cancelled',
-        'order.payment.cancelled',
-    ];
-
-    if (in_array($type, $approvedEvents, true)) {
-        bridgeLog('APROBANDO ' . $code . ' EVENT=' . $type);
-        PaymentBackupsController::aprobarPago($backup, $tx);
-    } elseif (in_array($type, $rejectedEvents, true)) {
-        bridgeLog('RECHAZANDO ' . $code . ' EVENT=' . $type);
-        PaymentBackupsController::rechazarPago($backup, $tx);
-    } else {
-        bridgeLog('IGNORADO ' . $code . ' EVENT=' . $type);
-    }
-
-    http_response_code(200);
-    echo 'OK';
 }
 
 $raw = (string)file_get_contents('php://input');
@@ -136,5 +69,17 @@ if (OPENPAY_REQUIRE_BRIDGE_SIGNATURE) {
     bridgeLog('ADVERTENCIA: OPENPAY_REQUIRE_BRIDGE_SIGNATURE=false, firma HMAC no validada');
 }
 
-processEvent($data);
-
+try {
+    $processor = AppContainer::get()->webhooks();
+    $result = $processor->process($data, 'openpay-bridge');
+    bridgeLog('PROCESADO uuid=' . ($result['uuid'] ?? '?') . ' result=' . json_encode($result['result'] ?? []));
+    http_response_code(200);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => true, 'result' => $result['result'] ?? null]);
+} catch (Throwable $e) {
+    bridgeLog('ERROR PROCESANDO: ' . $e->getMessage());
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    exit;
+}

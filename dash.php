@@ -21,7 +21,8 @@ if ($detail) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login - <?= SITE_NAME ?></title> 
-    <link rel="shortcut icon" type="image/png" href="https://cdn.eldiadetusuerte.com/images/logos/logo.ico" />
+    <link rel="shortcut icon" type="image/png" href="https://cdn.caballosrevelo.com/logos/logo.ico" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(ASSETS_URL, ENT_QUOTES, 'UTF-8') ?>/css/app.css?v=6" />
     <link rel="stylesheet" href="<?= htmlspecialchars(ASSETS_URL, ENT_QUOTES, 'UTF-8') ?>/css/styles.min.css" />
 </head>
 <body>
@@ -33,9 +34,11 @@ if ($detail) {
                     <div class="col-md-8 col-lg-6 col-xxl-3">
                         <div class="card mb-0">
                             <div class="card-body">
-                                <a href="/" class="text-nowrap logo-img text-center d-block py-3 w-100">
-                                    <img src="https://cdn.eldiadetusuerte.com/images/logos/logo-blanco.jpg" width="200" alt="">
-                                </a>
+                                <div class="text-center py-3 mb-2">
+                                    <a href="/" class="logo-img d-inline-block">
+                                        <img src="https://cdn.caballosrevelo.com/logos/logo.png" width="200" alt="<?= SITE_NAME ?>" class="img-fluid">
+                                    </a>
+                                </div>
                                 <?php if ($msg): ?>
                                     <div class="alert alert-danger" role="alert">
                                         <?= $msg ?>

@@ -1,6 +1,3 @@
-// ==========================================
-// BASE DE DATOS DE DEPARTAMENTOS Y CIUDADES
-// ==========================================
 const datosColombia = {
     "AMAZONAS": [{ display: "LETICIA", value: "LETICIA" }, { display: "PUERTO NARIÑO", value: "PUERTO NARIÑO" }],
     "ANTIOQUIA": [{ display: "MEDELLIN", value: "MEDELLIN" }, { display: "ABEJORRAL", value: "ABEJORRAL" }, { display: "ABRIAQUI", value: "ABRIAQUI" }, { display: "ALEJANDRIA", value: "ALEJANDRIA" }, { display: "AMAGA", value: "AMAGA" }, { display: "AMALFI", value: "AMALFI" }, { display: "ANDES", value: "ANDES" }, { display: "ANGELOPOLIS", value: "ANGELOPOLIS" }, { display: "ANGOSTURA", value: "ANGOSTURA" }, { display: "ANORI", value: "ANORI" }, { display: "SANTA FE DE ANTIOQUIA", value: "SANTA FE DE ANTIOQUIA" }, { display: "ANZA", value: "ANZA" }, { display: "APARTADO", value: "APARTADO" }, { display: "ARBOLETES", value: "ARBOLETES" }, { display: "ARGELIA", value: "ARGELIA" }, { display: "ARMENIA", value: "ARMENIA" }, { display: "BARBOSA", value: "BARBOSA" }, { display: "BELMIRA", value: "BELMIRA" }, { display: "BELLO", value: "BELLO" }, { display: "BETANIA", value: "BETANIA" }, { display: "BETULIA", value: "BETULIA" }, { display: "CIUDAD BOLIVAR", value: "CIUDAD BOLIVAR" }, { display: "BRICEÑO", value: "BRICEÑO" }, { display: "BURITICA", value: "BURITICA" }, { display: "CACERES", value: "CACERES" }, { display: "CAICEDO", value: "CAICEDO" }, { display: "CALDAS", value: "CALDAS" }, { display: "CAMPAMENTO", value: "CAMPAMENTO" }, { display: "CAÑASGORDAS", value: "CAÑASGORDAS" }, { display: "CARACOLI", value: "CARACOLI" }, { display: "CARAMANTA", value: "CARAMANTA" }, { display: "CAREPA", value: "CAREPA" }, { display: "EL CARMEN DE VIBORAL", value: "EL CARMEN DE VIBORAL" }, { display: "CAROLINA", value: "CAROLINA" }, { display: "CAUCASIA", value: "CAUCASIA" }, { display: "CHIGORODO", value: "CHIGORODO" }, { display: "CISNEROS", value: "CISNEROS" }, { display: "COCORNA", value: "COCORNA" }, { display: "CONCEPCION", value: "CONCEPCION" }, { display: "CONCORDIA", value: "CONCORDIA" }, { display: "COPACABANA", value: "COPACABANA" }, { display: "DABEIBA", value: "DABEIBA" }, { display: "DONMATIAS", value: "DONMATIAS" }, { display: "EBEJICO", value: "EBEJICO" }, { display: "EL BAGRE", value: "EL BAGRE" }, { display: "ENTRERRIOS", value: "ENTRERRIOS" }, { display: "ENVIGADO", value: "ENVIGADO" }, { display: "FREDONIA", value: "FREDONIA" }, { display: "FRONTINO", value: "FRONTINO" }, { display: "GIRALDO", value: "GIRALDO" }, { display: "GIRARDOTA", value: "GIRARDOTA" }, { display: "GOMEZ PLATA", value: "GOMEZ PLATA" }, { display: "GRANADA", value: "GRANADA" }, { display: "GUADALUPE", value: "GUADALUPE" }, { display: "GUARNE", value: "GUARNE" }, { display: "GUATAPE", value: "GUATAPE" }, { display: "HELICONIA", value: "HELICONIA" }, { display: "HISPANIA", value: "HISPANIA" }, { display: "ITAGÜI", value: "ITAGÜI" }, { display: "ITUANGO", value: "ITUANGO" }, { display: "JARDIN", value: "JARDIN" }, { display: "JERICO", value: "JERICO" }, { display: "LA CEJA", value: "LA CEJA" }, { display: "LA ESTRELLA", value: "LA ESTRELLA" }, { display: "LA PINTADA", value: "LA PINTADA" }, { display: "LA UNION", value: "LA UNION" }, { display: "LIBORINA", value: "LIBORINA" }, { display: "MACEO", value: "MACEO" }, { display: "MARINILLA", value: "MARINILLA" }, { display: "MONTEBELLO", value: "MONTEBELLO" }, { display: "MURINDO", value: "MURINDO" }, { display: "MUTATA", value: "MUTATA" }, { display: "NARIÑO", value: "NARIÑO" }, { display: "NECOCLI", value: "NECOCLI" }, { display: "NECHI", value: "NECHI" }, { display: "OLAYA", value: "OLAYA" }, { display: "PEÑOL", value: "PEÑOL" }, { display: "PEQUE", value: "PEQUE" }, { display: "PUEBLORRICO", value: "PUEBLORRICO" }, { display: "PUERTO BERRIO", value: "PUERTO BERRIO" }, { display: "PUERTO NARE", value: "PUERTO NARE" }, { display: "PUERTO TRIUNFO", value: "PUERTO TRIUNFO" }, { display: "REMEDIOS", value: "REMEDIOS" }, { display: "RETIRO", value: "RETIRO" }, { display: "RIONEGRO", value: "RIONEGRO" }, { display: "SABANALARGA", value: "SABANALARGA" }, { display: "SABANETA", value: "SABANETA" }, { display: "SALGAR", value: "SALGAR" }, { display: "SAN ANDRES DE CUERQUIA", value: "SAN ANDRES DE CUERQUIA" }, { display: "SAN CARLOS", value: "SAN CARLOS" }, { display: "SAN FRANCISCO", value: "SAN FRANCISCO" }, { display: "SAN JERONIMO", value: "SAN JERONIMO" }, { display: "SAN JOSE DE LA MONTAÑA", value: "SAN JOSE DE LA MONTAÑA" }, { display: "SAN JUAN DE URABA", value: "SAN JUAN DE URABA" }, { display: "SAN LUIS", value: "SAN LUIS" }, { display: "SAN PEDRO DE LOS MILAGROS", value: "SAN PEDRO DE LOS MILAGROS" }, { display: "SAN PEDRO DE URABA", value: "SAN PEDRO DE URABA" }, { display: "SAN RAFAEL", value: "SAN RAFAEL" }, { display: "SAN ROQUE", value: "SAN ROQUE" }, { display: "SAN VICENTE FERRER", value: "SAN VICENTE FERRER" }, { display: "SANTA BARBARA", value: "SANTA BARBARA" }, { display: "SANTA ROSA DE OSOS", value: "SANTA ROSA DE OSOS" }, { display: "SANTO DOMINGO", value: "SANTO DOMINGO" }, { display: "EL SANTUARIO", value: "EL SANTUARIO" }, { display: "SEGOVIA", value: "SEGOVIA" }, { display: "SONSON", value: "SONSON" }, { display: "SOPETRAN", value: "SOPETRAN" }, { display: "TAMESIS", value: "TAMESIS" }, { display: "TARAZA", value: "TARAZA" }, { display: "TARSO", value: "TARSO" }, { display: "TITIRIBI", value: "TITIRIBI" }, { display: "TOLEDO", value: "TOLEDO" }, { display: "TURBO", value: "TURBO" }, { display: "URAMITA", value: "URAMITA" }, { display: "URRAO", value: "URRAO" }, { display: "VALDIVIA", value: "VALDIVIA" }, { display: "VALPARAISO", value: "VALPARAISO" }, { display: "VEGACHI", value: "VEGACHI" }, { display: "VENECIA", value: "VENECIA" }, { display: "VIGIA DEL FUERTE", value: "VIGIA DEL FUERTE" }, { display: "YALI", value: "YALI" }, { display: "YARUMAL", value: "YARUMAL" }, { display: "YOLOMBO", value: "YOLOMBO" }, { display: "YONDO", value: "YONDO" }, { display: "ZARAGOZA", value: "ZARAGOZA" }],
@@ -36,27 +33,19 @@ const datosColombia = {
     "VICHADA": [{ display: "PUERTO CARREÑO", value: "PUERTO CARREÑO" }, { display: "LA PRIMAVERA", value: "LA PRIMAVERA" }, { display: "SANTA ROSALIA", value: "SANTA ROSALIA" }, { display: "CUMARIBO", value: "CUMARIBO" }]
 };
 
-// ==========================================
-// FUNCIONES GLOBALES DE UBICACIÓN
-// ==========================================
-
-// Función para inicializar los departamentos
 function inicializarUbicacion() {
     const $selectDepto = $('#departamento');
     const $selectCiudad = $('#ciudad');
 
-    // Limpiar opciones previas
     $selectDepto.empty();
     $selectDepto.append('<option value="">Seleccione...</option>');
 
-    // Llenar departamentos (ordenados alfabéticamente)
     const departamentos = Object.keys(datosColombia).sort();
     
     departamentos.forEach(depto => {
         $selectDepto.append(new Option(depto, depto));
     });
 
-    // Evento Change del Departamento
     $selectDepto.on('change', function() {
         const deptoSeleccionado = $(this).val();
         cargarCiudades(deptoSeleccionado);
@@ -68,7 +57,7 @@ function cargarCiudades(departamento) {
     $selectCiudad.empty();
     
     if (departamento && datosColombia[departamento]) {
-        $selectCiudad.prop('disabled', false); // Usar .prop es mejor que .removeAttr
+        $selectCiudad.prop('disabled', false);
         $selectCiudad.append('<option value="">Seleccione...</option>');
         
         datosColombia[departamento].forEach(ciudad => {
@@ -79,6 +68,5 @@ function cargarCiudades(departamento) {
         $selectCiudad.prop('disabled', true);
     }
 
-    // Notificar a Select2 que el DOM cambió
     $selectCiudad.trigger('change'); 
 }

@@ -1,6 +1,3 @@
-/**
- * numeros-vendidos.js - Gestión Estilizada con Paginación
- */
 let cache = [], paginaActual = 1;
 const registrosPorPagina = 10;
 const VENTAS_ENDPOINT = '/front/ajax/ventas.ajax.php';
@@ -9,55 +6,59 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarRifas();
     cargarNumeros();
 
-    document.getElementById('searchNumeros').addEventListener('input', debounce(() => { paginaActual = 1; cargarNumeros(); }, 500));
-    document.getElementById('filterRifa').addEventListener('change', () => { paginaActual = 1; cargarNumeros(); });
+    document.getElementById('searchNumeros').addEventListener('input', debounce(() => {
+        paginaActual = 1;
+        cargarNumeros();
+    }, 500));
+    document.getElementById('filterRifa').addEventListener('change', () => {
+        paginaActual = 1;
+        cargarNumeros();
+    });
 });
 
 async function cargarRifas() {
     try {
         const fd = new FormData();
         fd.append('action', 'obtener_rifas');
-        const r = await fetch(VENTAS_ENDPOINT, { method: 'POST', body: fd });
-        const j = await r.json();
+        const j = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
         const s = document.getElementById('filterRifa');
         if (j.success && s) {
-            j.data.forEach(r => {
-                s.innerHTML += `<option value="${r.id_raffle}">${r.title_raffle}</option>`;
+            j.data.forEach(raffle => {
+                s.innerHTML += `<option value="${raffle.id_raffle}">${raffle.title_raffle}</option>`;
             });
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        adminNotifyError(e instanceof Error ? e.message : 'No se pudieron cargar las rifas.');
+    }
 }
 
 async function cargarNumeros() {
-    // Spinner simple mientras carga
-    document.getElementById('bodyTabla').innerHTML = `<tr><td colspan="5" class="text-center py-5">Cargando...</td></tr>`;
-    
+    const tbody = document.getElementById('bodyTabla');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5">Cargando...</td></tr>`;
+    }
+
     try {
         const fd = new FormData();
-        fd.append('action', 'numeros_vendidos'); // Asegúrate que esta acción exista en tu AJAX
-        // Si no existe 'numeros_vendidos' usa 'obtener_disponibles' o crea la lógica similar a ventas
-        // Asumo que tienes un endpoint que trae todos los vendidos
-        // Si no, avísame para crear el endpoint en el controlador.
-        
-        // NOTA: Para este ejemplo usaré la lógica que tenías, asumiendo que el backend responde.
-        // Si no tienes el backend para esto, dímelo y te paso el controlador.
-        
-        // Simulación de parámetros (ajusta según tu backend real)
+        fd.append('action', 'numeros_vendidos');
         fd.append('search', document.getElementById('searchNumeros').value);
         fd.append('id_raffle', document.getElementById('filterRifa').value);
 
-        const res = await fetch(VENTAS_ENDPOINT, { method: 'POST', body: fd });
-        const data = await res.json();
-        
+        const data = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
+
         cache = data.success ? data.data : [];
-        renderTodo(); // Llamamos al renderizador que incluye paginación
-        
-    } catch (e) { console.error(e); }
+        if (!data.success) {
+            adminNotifyError(adminExtractMessage(data, 'No se pudieron cargar los números vendidos.'));
+        }
+        renderTodo();
+    } catch (e) {
+        cache = [];
+        renderTodo();
+        adminNotifyError(e instanceof Error ? e.message : 'No se pudieron cargar los números vendidos.');
+    }
 }
 
-// --- LÓGICA DE PAGINACIÓN ---
 function renderTodo() {
-    // Si tienes el PaginationHelper global
     if (typeof PaginationHelper !== 'undefined') {
         const segmento = PaginationHelper.getSegment(cache, paginaActual, registrosPorPagina);
         renderTabla(segmento);
@@ -67,14 +68,11 @@ function renderTodo() {
             limit: registrosPorPagina,
             containerId: 'contenedorPaginacion',
             infoId: 'infoPaginacion',
-            callbackName: 'cambiarPagina'
+            callbackName: 'cambiarPagina',
         });
     } else {
-        // Fallback manual si no existe el Helper
         const inicio = (paginaActual - 1) * registrosPorPagina;
-        const fin = inicio + registrosPorPagina;
-        const segmento = cache.slice(inicio, fin);
-        renderTabla(segmento);
+        renderTabla(cache.slice(inicio, inicio + registrosPorPagina));
         renderPaginadorManual();
     }
 }
@@ -84,115 +82,155 @@ function cambiarPagina(p) {
     renderTodo();
 }
 
-// --- RENDERIZADO VISUAL PRO ---
+function numeroDatos(t) {
+    const dt = adminFormatDateColombia(t.date_created_sale);
+    return {
+        fecha: dt.fecha,
+        hora: dt.hora,
+        inicial: adminInitial(t.name_customer),
+        nombre: adminNombreCompleto(t),
+    };
+}
+
+function renderNumeroClientMobile(d, t) {
+    return `
+    <div class="admin-card-head d-lg-none">
+        <div class="admin-card-head__client d-flex align-items-center min-w-0">
+            ${adminAvatar(d.inicial)}
+            <div class="admin-card-client-info min-w-0 flex-grow-1">
+                <span class="fw-bold text-dark text-capitalize d-block">${adminEscapeHtml(d.nombre)}</span>
+                <div class="text-muted small mt-1 d-flex gap-2 flex-wrap">
+                    <span><i class="ti ti-phone text-secondary"></i> ${adminEscapeHtml(t.phone_customer || '--')}</span>
+                    ${t.city_customer ? `<span class="border-start ps-2"><i class="ti ti-map-pin text-secondary"></i> ${adminEscapeHtml(t.city_customer)}</span>` : ''}
+                </div>
+                ${t.email_customer ? `<small class="text-muted fst-italic d-block" style="font-size: 0.75rem;">${adminEscapeHtml(t.email_customer)}</small>` : ''}
+            </div>
+        </div>
+        <div class="admin-card-head__meta admin-card-head__meta--numero">
+            ${adminNumeroVendidoBadge(t.number_ticket)}
+        </div>
+        <div class="admin-card-head__rifa">
+            <span class="cell-rifa-name">${adminEscapeHtml(t.title_raffle || '—')}</span>
+        </div>
+        <div class="admin-card-head__code-fecha d-lg-none">
+            ${adminTokenChipBlock(t.code_sale)}
+            ${adminFechaCompact(d.fecha, d.hora)}
+        </div>
+    </div>`;
+}
+
+function renderNumeroActionsMobile(idSale) {
+    return `
+    <div class="d-lg-none">
+        <button type="button" class="btn btn-outline-primary btn-sm w-100"
+            onclick="verReciboVenta(${idSale})" title="Ver boleta completa">
+            <i class="ti ti-file-text"></i> Ver boleta
+        </button>
+    </div>`;
+}
+
+function renderNumeroActionsDesktop(idSale) {
+    return `
+    <div class="d-none d-lg-block text-end">
+        <button type="button" class="btn btn-outline-primary btn-sm"
+            onclick="verReciboVenta(${idSale})" title="Ver boleta completa">
+            <i class="ti ti-file-text"></i> Boleta
+        </button>
+    </div>`;
+}
+
+function renderNumeroDetalleDesktop(t) {
+    return `
+    <div class="admin-venta-resumen">
+        <div class="admin-venta-resumen__code">${adminTokenChip(t.code_sale)}</div>
+        <div class="cell-rifa-name">${adminEscapeHtml(t.title_raffle || '—')}</div>
+    </div>`;
+}
+
+function renderNumeroClientDesktop(d, t) {
+    return `
+    <div class="d-none d-lg-block">
+        <div class="d-flex align-items-center">
+            ${adminAvatar(d.inicial)}
+            <div class="d-flex flex-column" style="line-height: 1.3;">
+                <span class="fw-bold text-dark text-capitalize">
+                    ${adminEscapeHtml(d.nombre)}
+                </span>
+                <div class="text-muted small mt-1 d-flex gap-2 flex-wrap">
+                    <span><i class="ti ti-phone text-secondary"></i> ${adminEscapeHtml(t.phone_customer || '--')}</span>
+                    ${t.city_customer ? `<span class="border-start ps-2"><i class="ti ti-map-pin text-secondary"></i> ${adminEscapeHtml(t.city_customer)}</span>` : ''}
+                </div>
+                ${t.email_customer ? `<small class="text-muted fst-italic" style="font-size: 0.75rem;">${adminEscapeHtml(t.email_customer)}</small>` : ''}
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderNumeroRow(t) {
+    const d = numeroDatos(t);
+    const idSale = parseInt(t.id_sale_ticket, 10) || 0;
+    return `
+    <tr class="align-middle card-row-admin admin-table-row">
+        <td class="py-2 ps-3 mobile-card-head">
+            ${renderNumeroClientMobile(d, t)}
+            ${renderNumeroClientDesktop(d, t)}
+        </td>
+        <td class="d-none d-lg-table-cell py-2 text-center col-numero-desktop">
+            ${adminNumeroVendidoBadge(t.number_ticket)}
+        </td>
+        <td class="d-none d-lg-table-cell py-2 admin-col-resumen">
+            ${renderNumeroDetalleDesktop(t)}
+        </td>
+        <td class="d-none d-lg-table-cell py-2 col-fecha-desktop">
+            ${adminFechaCompact(d.fecha, d.hora)}
+        </td>
+        <td class="py-2 pe-3 mobile-card-actions">
+            ${idSale > 0 ? renderNumeroActionsMobile(idSale) : ''}
+            ${idSale > 0 ? renderNumeroActionsDesktop(idSale) : ''}
+        </td>
+    </tr>`;
+}
+
 function renderTabla(datos) {
     const tbody = document.getElementById('bodyTabla');
-    
+    if (!tbody) return;
+
     if (!datos || datos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-5 text-muted">No se encontraron números</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">No se encontraron números</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = datos.map((t) => {
-        const raw = t.date_created_sale ? String(t.date_created_sale).replace(' ', 'T') + '-05:00' : null;
-        const f = raw ? new Date(raw) : new Date();
-        const opts = { timeZone: 'America/Bogota' };
-        const fecha = f.toLocaleDateString('es-CO', opts);
-        const hora = f.toLocaleTimeString('es-CO', {
-            ...opts,
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-        });
-        
-        // Inicial para Avatar
-        const inicial = t.name_customer ? t.name_customer.charAt(0).toUpperCase() : 'C';
-
-        return `
-        <tr class="align-middle border-bottom hover-shadow">
-            
-            <td class="py-3 ps-4">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-light border d-flex justify-content-center align-items-center text-secondary fw-bold me-3 flex-shrink-0" 
-                         style="width: 40px; height: 40px; font-size: 1rem;">
-                        ${inicial}
-                    </div>
-                    <div class="d-flex flex-column" style="line-height: 1.3;">
-                        <span class="fw-bold text-dark text-capitalize">
-                            ${t.name_customer} ${t.lastname_customer}
-                        </span>
-                        <div class="text-muted small mt-1 d-flex gap-2 flex-wrap">
-                            <span><i class="ti ti-phone text-secondary"></i> ${t.phone_customer || '--'}</span>
-                            <span class="border-start ps-2"><i class="ti ti-map-pin text-secondary"></i> ${t.city_customer || 'N/A'}</span>
-                        </div>
-                        <small class="text-muted fst-italic" style="font-size: 0.75rem;">
-                            ${t.email_customer || ''}
-                        </small>
-                    </div>
-                </div>
-            </td>
-
-            <td class="py-3">
-                <div class="d-flex flex-column">
-                    <span class="font-monospace bg-light text-secondary py-1 rounded border" 
-                          style="font-size: 0.8rem; width: fit-content;">${t.code_sale}
-                    </span>
-                    <span class="text-muted small fw-medium text-truncate" style="max-width: 180px;">
-                        ${t.title_raffle}
-                    </span>
-                </div>
-            </td>
-
-            <td class="py-3 text-center">
-                <div class="d-inline-flex align-items-center justify-content-center rounded shadow-sm" 
-                     style="background-color: #f5f5f5; color: #000; border: 1px solid #000000; width: 50px; height: 38px;"
-                    <span class="fw-bold" style="font-size: 1rem; letter-spacing: 0.5px;">
-                        ${t.number_ticket}
-                    </span>
-                </div>
-            </td>
-
-            <td class="py-3 text-end pe-4">
-                <div class="d-flex flex-column">
-                    <span class="text-dark fw-medium" style="font-size: 0.9rem;">${fecha}</span>
-                    <span class="text-muted small">${hora}</span>
-                </div>
-            </td>
-        </tr>`;
-    }).join('');
+    tbody.innerHTML = datos.map(t => renderNumeroRow(t)).join('');
 }
 
-// Fallback manual de paginación por si no usas el Helper externo
 function renderPaginadorManual() {
-    const totalPaginas = Math.ceil(cache.length / registrosPorPagina);
+    const totalPaginas = Math.ceil(cache.length / registrosPorPagina) || 1;
     const container = document.getElementById('contenedorPaginacion');
     const info = document.getElementById('infoPaginacion');
-    
-    if(info) info.textContent = `Total: ${cache.length} registros`;
-    if(!container) return;
+
+    if (info) {
+        const desde = cache.length === 0 ? 0 : (paginaActual - 1) * registrosPorPagina + 1;
+        const hasta = Math.min(paginaActual * registrosPorPagina, cache.length);
+        info.textContent = `Mostrando ${desde} a ${hasta} de ${cache.length.toLocaleString()} registros`;
+    }
+    if (!container) return;
 
     let html = '';
-    // Botón Anterior
     html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1})">Ant</a>
-             </li>`;
-             
-    // Números (simplificado)
-    for(let i=1; i<=totalPaginas; i++){
-        if(i === 1 || i === totalPaginas || (i >= paginaActual - 1 && i <= paginaActual + 1)){
-             html += `<li class="page-item ${i === paginaActual ? 'active' : ''}">
-                        <a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a>
-                      </li>`;
-        } else if (i === paginaActual - 2 || i === paginaActual + 2) {
-             html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual - 1})">Anterior</a>
+    </li>`;
+
+    for (let i = 1; i <= totalPaginas; i++) {
+        if (i === 1 || i === totalPaginas || (i >= paginaActual - 1 && i <= paginaActual + 1)) {
+            html += `<li class="page-item ${i === paginaActual ? 'active' : ''}">
+                <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${i})">${i}</a>
+            </li>`;
         }
     }
 
-    // Botón Siguiente
-    html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1})">Sig</a>
-             </li>`;
-             
+    html += `<li class="page-item ${paginaActual >= totalPaginas ? 'disabled' : ''}">
+        <a class="page-link" href="javascript:void(0)" onclick="cambiarPagina(${paginaActual + 1})">Siguiente</a>
+    </li>`;
     container.innerHTML = html;
 }
 
@@ -203,4 +241,30 @@ function limpiarFiltros() {
     cargarNumeros();
 }
 
-function debounce(f, t) { let e; return () => { clearTimeout(e); e = setTimeout(f, t); } }
+function debounce(f, t) {
+    let e;
+    return () => {
+        clearTimeout(e);
+        e = setTimeout(f, t);
+    };
+}
+
+async function verReciboVenta(idSale) {
+    if (!idSale) return;
+
+    const fd = new FormData();
+    fd.append('action', 'detalle_venta');
+    fd.append('id_sale', String(idSale));
+
+    try {
+        const res = await adminFetchJson(VENTAS_ENDPOINT, { body: fd });
+        if (res.success) {
+            document.getElementById('cuerpoRecibo').innerHTML = res.html_recibo;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRecibo')).show();
+        } else {
+            adminNotifyError(adminExtractMessage(res, 'No se pudo cargar la boleta.'));
+        }
+    } catch (e) {
+        adminNotifyError(e instanceof Error ? e.message : 'Error al cargar la boleta.');
+    }
+}

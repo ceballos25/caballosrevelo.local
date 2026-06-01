@@ -10,6 +10,11 @@ final class LegacySalesRepository implements SalesRepositoryInterface
 {
     public function createSale(array $payload): array
     {
+        $ticketIds = $payload['ticket_ids'] ?? null;
+        if (is_array($ticketIds) && $ticketIds !== []) {
+            return VentasController::crearVenta($payload, array_values(array_map('intval', $ticketIds)));
+        }
+
         return VentasController::crearVenta($payload);
     }
 

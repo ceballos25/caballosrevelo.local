@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 namespace App\Presentation\Http\Controller;
 
+use App\Application\Reporting\ReportExportService;
 use App\Application\Reporting\ReportSchemaRegistry;
 use App\Application\Reporting\SafeReportExecutor;
 use App\Application\Reporting\SavedReportRepository;
-use App\Presentation\Http\Middleware\RbacMiddleware;
+use App\Presentation\Http\Middleware\PermissionMiddleware;
 use App\Shared\Audit\AuditLogger;
 use App\Shared\Http\Request;
 use App\Shared\Http\Response;
@@ -14,22 +15,25 @@ use Throwable;
 
 final class ReportHttpController
 {
-    private const ROLE = [
-        'schema' => ['admin', 'administrador', 'superadmin', 'vendedor'],
-        'run' => ['admin', 'administrador', 'superadmin', 'vendedor'],
-        'presets' => ['admin', 'administrador', 'superadmin', 'vendedor'],
-        'saved_list' => ['admin', 'administrador', 'superadmin', 'vendedor'],
-        'saved_get' => ['admin', 'administrador', 'superadmin', 'vendedor'],
-        'saved_save' => ['admin', 'administrador', 'superadmin', 'vendedor'],
-        'saved_delete' => ['admin', 'administrador', 'superadmin'],
+    private const PERMISSION_BY_ACTION = [
+        'schema' => ['reportes.view'],
+        'run' => ['reportes.view'],
+        'presets' => ['reportes.view'],
+        'saved_list' => ['reportes.view'],
+        'saved_get' => ['reportes.view'],
+        'saved_save' => ['reportes.view'],
+        'saved_delete' => ['reportes.view'],
+        'export_excel' => ['reportes.export'],
+        'export_pdf' => ['reportes.export'],
     ];
 
     public function __construct(
         private readonly ReportSchemaRegistry $registry,
         private readonly SafeReportExecutor $executor,
         private readonly SavedReportRepository $saved,
-        private readonly RbacMiddleware $rbac,
-        private readonly AuditLogger $audit
+        private readonly PermissionMiddleware $permissions,
+        private readonly AuditLogger $audit,
+        private readonly ReportExportService $exporter
     ) {
     }
 
@@ -37,10 +41,10 @@ final class ReportHttpController
     {
         try {
             $action = trim((string)$request->input('action', ''));
-            if (!isset(self::ROLE[$action])) {
+            if (!isset(self::PERMISSION_BY_ACTION[$action])) {
                 Response::json(['success' => false, 'message' => 'Accion invalida'], 422);
             }
-            $this->rbac->authorize($action, self::ROLE);
+            $this->permissions->authorize($action, self::PERMISSION_BY_ACTION);
 
             match ($action) {
                 'schema' => $this->schema(),
@@ -50,6 +54,8 @@ final class ReportHttpController
                 'saved_get' => $this->savedGet($request),
                 'saved_save' => $this->savedSave($request),
                 'saved_delete' => $this->savedDelete($request),
+                'export_excel' => $this->exportExcel($request),
+                'export_pdf' => $this->exportPdf($request),
                 default => Response::json(['success' => false, 'message' => 'Accion invalida'], 422),
             };
         } catch (Throwable $e) {
@@ -139,6 +145,51 @@ final class ReportHttpController
 
     private function run(Request $request): never
     {
+        $result = $this->executeSpec($request);
+        $this->audit->log('reports.run', ['dataset' => $result['spec']['dataset'] ?? '']);
+        Response::json(['success' => true] + $result['data']);
+    }
+
+    private function exportExcel(Request $request): never
+    {
+        $result = $this->executeSpec($request);
+        $columns = $result['data']['columns'];
+        $rows = $result['data']['rows'];
+        $title = trim((string)$request->input('title', 'Reporte'));
+        $filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $title) ?: 'reporte';
+        $xml = $this->exporter->toSpreadsheetXml($columns, $rows, $title);
+
+        $this->audit->log('reports.export_excel', ['rows' => count($rows)]);
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '.xls"');
+        header('Cache-Control: no-store');
+        echo "\xEF\xBB\xBF" . $xml;
+        exit;
+    }
+
+    private function exportPdf(Request $request): never
+    {
+        $result = $this->executeSpec($request);
+        $columns = $result['data']['columns'];
+        $rows = $result['data']['rows'];
+        $title = trim((string)$request->input('title', 'Reporte'));
+        $filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $title) ?: 'reporte';
+        $html = $this->exporter->toPdfHtml($columns, $rows, $title);
+        $pdf = $this->exporter->renderPdf($html);
+
+        $this->audit->log('reports.export_pdf', ['rows' => count($rows)]);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $filename . '.pdf"');
+        header('Cache-Control: no-store');
+        echo $pdf;
+        exit;
+    }
+
+    /**
+     * @return array{spec: array<string, mixed>, data: array{columns: list<string>, rows: list<array<string, mixed>>}}
+     */
+    private function executeSpec(Request $request): array
+    {
         $raw = trim((string)$request->input('spec', ''));
         if ($raw === '') {
             Response::json(['success' => false, 'message' => 'Spec JSON requerido'], 422);
@@ -147,9 +198,8 @@ final class ReportHttpController
         if (!is_array($spec)) {
             Response::json(['success' => false, 'message' => 'Spec invalido'], 422);
         }
-        $result = $this->executor->run($spec);
-        $this->audit->log('reports.run', ['dataset' => $spec['dataset'] ?? '']);
-        Response::json(['success' => true] + $result);
+
+        return ['spec' => $spec, 'data' => $this->executor->run($spec)];
     }
 
     private function savedList(): never

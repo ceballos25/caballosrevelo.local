@@ -1,10 +1,47 @@
 <?php
 
+require_once __DIR__ . '/raffle_web_sync.php';
+
 class RifasController
 {
     public const TABLE = 'raffles';
 
     private const TICKET_INSERT_CHUNK = 400;
+
+    /** Normaliza precio COP entero (evita "10000.00" → 1000000 al quitar solo el punto). */
+    public static function normalizePriceCOP(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) max(0, (int) round((float) $value));
+        }
+        $s = trim((string) $value);
+        if ($s === '') {
+            return 0.0;
+        }
+        if (preg_match('/^\d+$/', $s)) {
+            return (float) $s;
+        }
+        if (preg_match('/^\d{1,3}(\.\d{3})+$/', $s)) {
+            return (float) str_replace('.', '', $s);
+        }
+        if (preg_match('/^\d+[.,]\d{1,2}$/', $s)) {
+            return (float) round((float) str_replace(',', '.', $s), 0);
+        }
+        $digits = preg_replace('/\D/', '', $s);
+
+        return $digits !== '' ? (float) $digits : 0.0;
+    }
+
+    public static function obtenerRifasActivas()
+    {
+        $rows = Db::fetchAll(
+            'SELECT * FROM raffles
+             WHERE status_raffle = 1 AND hidden_raffle = 0
+             ORDER BY id_raffle DESC'
+        );
+
+        return ['success' => true, 'data' => $rows];
+    }
 
     public static function obtenerRifas()
     {
@@ -39,11 +76,13 @@ class RifasController
         $datos = [
             'title_raffle' => trim($data['title_raffle']),
             'description_raffle' => trim($data['description_raffle']),
-            'promotions_raffle' => trim($data['promotions_raffle'] ?? ''),
-            'price_raffle' => $data['price_raffle'],
+            'price_raffle' => self::normalizePriceCOP($data['price_raffle'] ?? 0),
             'digits_raffle' => (int)$data['digits_raffle'],
             'date_raffle' => $data['date_raffle'],
             'status_raffle' => (int)$data['status_raffle'],
+            'type_raffle' => in_array(($data['type_raffle'] ?? 'automatic'), ['manual', 'automatic'], true)
+                ? $data['type_raffle']
+                : 'automatic',
         ];
 
         $idRifa = Db::insert(self::TABLE, $datos);
@@ -71,7 +110,15 @@ class RifasController
             self::insertTicketsBatch($pdo, $batch);
         }
 
-        return ['success' => true, 'message' => "Rifa creada con $totalBoletos boletos."];
+        if ((int)$datos['status_raffle'] === 1) {
+            RaffleWebSync::sync($idRifa);
+        }
+
+        return [
+            'success' => true,
+            'message' => "Rifa creada con $totalBoletos boletos.",
+            'id_raffle' => $idRifa,
+        ];
     }
 
     /** @param list<array{number_ticket:string,status_ticket:int,id_raffle_ticket:int}> $rows */
@@ -96,19 +143,29 @@ class RifasController
     {
         $id = (int)$data['id_raffle'];
         $allowed = [
-            'title_raffle', 'description_raffle', 'promotions_raffle', 'price_raffle',
-            'digits_raffle', 'date_raffle', 'status_raffle',
+            'title_raffle', 'description_raffle', 'price_raffle',
+            'digits_raffle', 'date_raffle', 'status_raffle', 'type_raffle',
+            'min_quantity_raffle',
         ];
         $clean = [];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $data)) {
-                $clean[$k] = $data[$k];
+                $clean[$k] = $k === 'price_raffle'
+                    ? self::normalizePriceCOP($data[$k])
+                    : $data[$k];
             }
         }
         if ($clean === []) {
             return ['success' => false];
         }
         $n = Db::update(self::TABLE, $clean, 'id_raffle = :id', [':id' => $id]);
+
+        if ($n > 0) {
+            $preferred = isset($clean['status_raffle']) && (int)$clean['status_raffle'] === 1
+                ? $id
+                : null;
+            RaffleWebSync::sync($preferred);
+        }
 
         return $n > 0 ? ['success' => true, 'message' => 'Rifa actualizada'] : ['success' => false];
     }

@@ -4,8 +4,7 @@ $page_title = "Gestión de Clientes";
 include_once ROOT_PATH . "/includes/head.php";
 ?>
 
-<div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
-    data-sidebar-position="fixed" data-header-position="fixed">
+<div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-sidebartype="full">
 
     <?php include_once ROOT_PATH . "/includes/sidebar.php" ?>
 
@@ -51,7 +50,7 @@ include_once ROOT_PATH . "/includes/head.php";
 
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <div class="table-responsive admin-table-desktop" style="max-height: 600px; overflow-y: auto;">
                             <table class="table table-hover table-striped align-middle mb-0">
                                 <thead class="table-light sticky-top" style="z-index: 10;">
                                     <tr>
@@ -72,6 +71,7 @@ include_once ROOT_PATH . "/includes/head.php";
                                 </tbody>
                             </table>
                         </div>
+                        <div class="admin-cards-mobile p-3" id="clientesMobile"></div>
                     </div>
                     <div class="card-footer bg-white border-top py-3">
                         <div class="d-flex justify-content-between align-items-center">
@@ -162,6 +162,7 @@ $extra_js = '<link href="' . ASSETS_URL . '/libs/select2/css/select2.min.css" re
 <link href="' . ASSETS_URL . '/libs/select2/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="' . ASSETS_URL . '/libs/select2/js/select2.min.js"></script>
 <script src="' . ASSETS_URL . '/js/departamentos-ciudades.js"></script>
-<script src="' . ASSETS_URL . '/js/clientes.js?v=2"></script>';
+<script src="' . ASSETS_URL . '/js/admin-mobile.js?v=16"></script>
+<script src="' . ASSETS_URL . '/js/clientes.js?v=6"></script>';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>

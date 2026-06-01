@@ -31,6 +31,11 @@ define('DB_CHARSET', env('DB_CHARSET'));
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../controllers/db.php';
+require_once __DIR__ . '/../includes/site-favicon.php';
+
+if (!defined('APP_RUNNING_TESTS')) {
+    \App\Shared\Exception\ExceptionHandler::register();
+}
 
 /**
  * ===============================
@@ -64,12 +69,22 @@ define(
 );
 
 define('OPENPAY_RETURN_URL', env('OPENPAY_RETURN_URL'));
-// Solo marketing reenvía el webhook; en principal suele ir vacío.
+// URL pública donde OpenPay envía notificaciones (POST + Basic Auth).
+define(
+    'OPENPAY_WEBHOOK_URL',
+    trim((string)env('OPENPAY_WEBHOOK_URL', '')) !== ''
+        ? rtrim(trim((string)env('OPENPAY_WEBHOOK_URL')), '/')
+        : BASE_URL . '/openpay/webhook.php'
+);
+define('OPENPAY_WEBHOOK_USER', trim((string)env('OPENPAY_WEBHOOK_USER', '')));
+define('OPENPAY_WEBHOOK_PASSWORD', (string)env('OPENPAY_WEBHOOK_PASSWORD', ''));
+// Solo el microservicio de pagos (accesorios.caballosrevelo.com) reenvía; en principal suele ir vacío.
 define('OPENPAY_WEBHOOK_FORWARD_URL', trim((string)env('OPENPAY_WEBHOOK_FORWARD_URL', '')));
 define('OPENPAY_BRIDGE_SECRET', (string)env('OPENPAY_BRIDGE_SECRET', ''));
-// Mismo valor opcional que en marketing (header X-Status-Token); si vacío, status.bridge usa el bridge secret.
+// Mismo valor en accesorios (header X-Status-Token); si vacío, status.bridge usa OPENPAY_BRIDGE_SECRET.
 define('OPENPAY_STATUS_TOKEN', (string)env('OPENPAY_STATUS_TOKEN', ''));
-// En producción debe ser true: marketing firma con HMAC y el principal valida.
+define('OPENPAY_STATUS_API_URL', trim((string)env('OPENPAY_STATUS_API_URL', '')));
+// En producción: accesorios firma con HMAC al reenviar; el principal valida en webhook.bridge.php.
 define('OPENPAY_REQUIRE_BRIDGE_SIGNATURE', filter_var(env('OPENPAY_REQUIRE_BRIDGE_SIGNATURE', true), FILTER_VALIDATE_BOOLEAN));
 
 /**
@@ -81,7 +96,12 @@ define('SITE_NAME', env('SITE_NAME'));
 
 /**
  * ===============================
- * META CONVERSIONS API
+ * META PIXEL + CONVERSIONS API
+ * Producción (.env-cr):
+ *   META_PIXEL_ID=2058534878012983
+ *   META_ACCESS_TOKEN=token_desde_events_manager
+ *   META_CAPI_ENABLED=true
+ * Accesorios (.env): META_PIXEL_ID= mismo ID
  * ===============================
  */
 define('META_PIXEL_ID', (string)env('META_PIXEL_ID', '2058534878012983'));
@@ -92,8 +112,6 @@ define('META_CAPI_ENABLED', filter_var(env('META_CAPI_ENABLED', true), FILTER_VA
 define('META_CAPI_DEBUG', filter_var(env('META_CAPI_DEBUG', false), FILTER_VALIDATE_BOOLEAN));
 define('META_CAPI_CONNECT_TIMEOUT', max(1, (int)env('META_CAPI_CONNECT_TIMEOUT', 5)));
 define('META_CAPI_TIMEOUT', max(META_CAPI_CONNECT_TIMEOUT, (int)env('META_CAPI_TIMEOUT', 8)));
-define('META_CAPI_ALLOWED_SOURCES', (string)env('META_CAPI_ALLOWED_SOURCES', 'imagfonverde,entregacali'));
-define('META_CAPI_FILTER_BY_SOURCE', filter_var(env('META_CAPI_FILTER_BY_SOURCE', false), FILTER_VALIDATE_BOOLEAN));
 
 /**
  * ===============================
@@ -163,7 +181,11 @@ if (is_dir($sessionSavePath) && is_writable($sessionSavePath)) {
     ini_set('session.save_path', $sessionSavePath);
 }
 
-if (filter_var(env('SESSION_AUTO_START', true), FILTER_VALIDATE_BOOLEAN) && session_status() === PHP_SESSION_NONE) {
+if (
+    PHP_SAPI !== 'cli'
+    && filter_var(env('SESSION_AUTO_START', true), FILTER_VALIDATE_BOOLEAN)
+    && session_status() === PHP_SESSION_NONE
+) {
     session_name((string)env('SESSION_NAME', 'PHPSESSID'));
     session_start();
 }
@@ -180,21 +202,19 @@ if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['csrf_token'])) {
  */
 $publicPages = [
     'index.php',
+    'favicon.php',
     'pruebas.php',
     'dash.php',
     'transferencia.php',
     'webhook.php',
     'webhook.bridge.php',
     'status.bridge.php',
-    'numeros.ajax.php',
     'ventas.ajax.php',
     'web.ajax.php',
     'meta.ajax.php',
-    'clientes.ajax.php',
-    'success.php',
     'settings.ajax.php',
-    'transferencias.ajax.php',
     'login.php',
+    'success.php',
 ];
 $scriptNames = array_unique(array_filter([
     basename((string)($_SERVER['SCRIPT_FILENAME'] ?? '')),
@@ -211,6 +231,23 @@ foreach ($scriptNames as $base) {
 // Solo validar autenticación si NO es una página pública (en web; CLI no aplica)
 if (PHP_SAPI !== 'cli' && !$isPublicPage) {
     if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
+        $isAjaxRequest = false;
+        foreach ($scriptNames as $base) {
+            if (str_ends_with($base, '.ajax.php')) {
+                $isAjaxRequest = true;
+                break;
+            }
+        }
+        if (!$isAjaxRequest && !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+            && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            $isAjaxRequest = true;
+        }
+        if ($isAjaxRequest) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'No autenticado'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         header("Location: " . BASE_URL . "/dash.php");
         exit;
     }
