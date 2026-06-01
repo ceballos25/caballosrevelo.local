@@ -56,7 +56,7 @@
                             </div>
                             <div>
                                 <p class="premio-mayor-label mb-1" id="landingPremioMayorTitulo">Primer puesto</p>
-                                <p class="premio-mayor-desc mb-0" id="landingPremioMayorDesc">Caballo trote y galope totalmente aperado (incluye envío) · 3 primeras cifras de la lotería de Medellín</p>
+                                <p class="premio-mayor-desc mb-0" id="landingPremioMayorDesc">Caballo trote y galope totalmente aperado (incluye envío) · 3 últimas cifras de la lotería de Medellín</p>
                             </div>
                         </div>
                     </div>
