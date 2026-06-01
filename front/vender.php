@@ -178,7 +178,7 @@ include_once ROOT_PATH . "/includes/head.php";
             <span class="vender-mobile-bar__qty"><span id="lblCantidadMobile">0</span> nums</span>
         </div>
     </div>
-    <button type="button" class="btn btn-success fw-bold rounded-pill vender-mobile-bar__btn" id="btnAbrirCheckoutMobile" onclick="abrirCheckoutVentaMobile()">
+    <button type="button" class="btn btn-success btn-lg fw-bold rounded-pill vender-mobile-bar__btn" id="btnAbrirCheckoutMobile" onclick="abrirCheckoutVentaMobile()">
         Continuar
     </button>
 </div>
@@ -207,7 +207,7 @@ include_once ROOT_PATH . "/includes/head.php";
             <span>Registrando venta, espera un momento…</span>
         </div>
         <input type="radio" class="btn-check d-none" checked name="metodoPagoMobile" id="pagoEfecMob" value="Venta Manual">
-        <button type="button" class="btn btn-success w-100 fw-bold rounded-pill vender-sheet__confirm" id="btnCompletarVentaMobile" onclick="confirmarVentaDesdeSheet()">
+        <button type="button" class="btn btn-success btn-lg w-100 fw-bold rounded-pill vender-sheet__confirm" id="btnCompletarVentaMobile" onclick="confirmarVentaDesdeSheet()">
             CONFIRMAR VENTA
         </button>
     </div>
@@ -234,7 +234,7 @@ $extra_js = '
 <script src="' . ASSETS_URL . '/libs/select2/js/select2.min.js"></script>
 <script src="' . ASSETS_URL . '/js/departamentos-ciudades.js"></script>
 <script src="' . ASSETS_URL . '/js/cr-grilla-numeros.js?v=2"></script>
-<script src="' . ASSETS_URL . '/js/vender.js?v=19"></script>
+<script src="' . ASSETS_URL . '/js/vender.js?v=20"></script>
 ';
 include_once ROOT_PATH . "/includes/footer.php";
 ?>

@@ -17,7 +17,7 @@
                     <table width="100%" border="0" cellspacing="0" cellpadding="0" role="presentation" style="border-collapse:collapse;">
                         <tr>
                             <td align="left" valign="middle" style="vertical-align:middle;width:75%;">
-                                <img src="https://cdn.caballosrevelo.com/logos/logo.png" width="76" height="auto" alt="Caballos Revelo" style="display:block;border:0;max-width:76px;height:auto;margin:0;">
+                                <img src="https://caballosrevelo.com/assets/logo.png" width="76" height="auto" alt="Caballos Revelo" style="display:block;border:0;max-width:76px;height:auto;margin:0;">
                                 <p style="margin:2px 0 0;font-size:8px;color:#777777;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;line-height:1.3;">
                                     Caballos Revelo
                                 </p>

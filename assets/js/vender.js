@@ -273,11 +273,12 @@ function inyectarEstilosMarca() {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px));
+            gap: 14px;
+            min-height: 72px;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
             background: #fff;
             border-top: 1px solid #e9ecef;
-            box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.1);
             transform: translateY(110%);
             opacity: 0;
             pointer-events: none;
@@ -288,33 +289,44 @@ function inyectarEstilosMarca() {
             opacity: 1;
             pointer-events: auto;
         }
+        .vender-mobile-bar__info {
+            flex: 1;
+            min-width: 0;
+        }
         .vender-mobile-bar__label {
             display: block;
-            font-size: 0.65rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: #6c757d;
-            line-height: 1.1;
-        }
-        .vender-mobile-bar__price {
-            font-size: 1.15rem;
-            font-weight: 800;
-            color: #198754;
-            line-height: 1.15;
-        }
-        .vender-mobile-bar__qty {
             font-size: 0.72rem;
             font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6c757d;
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+        .vender-mobile-bar__price {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #198754;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+        .vender-mobile-bar__qty {
+            font-size: 0.8rem;
+            font-weight: 700;
             color: #495057;
-            background: #f1f3f5;
-            padding: 2px 8px;
+            background: #e9ecef;
+            padding: 4px 10px;
             border-radius: 999px;
         }
         .vender-mobile-bar__btn {
             flex-shrink: 0;
-            padding: 0.5rem 1.1rem;
-            font-size: 0.85rem;
+            min-width: 42%;
+            max-width: 52%;
+            min-height: 48px;
+            padding: 0.65rem 1.25rem;
+            font-size: 1rem;
+            letter-spacing: 0.02em;
+            box-shadow: 0 4px 14px rgba(25, 135, 84, 0.35);
         }
 
         
@@ -396,17 +408,25 @@ function inyectarEstilosMarca() {
         }
         .vender-sheet__total {
             text-align: center;
-            padding: 14px 0 4px;
+            padding: 18px 0 8px;
+        }
+        .vender-sheet__total .text-muted {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
         .vender-sheet__total-value {
             display: block;
-            font-size: 1.65rem;
+            font-size: 2rem;
             font-weight: 800;
             color: #198754;
-            line-height: 1.2;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-top: 4px;
         }
         .vender-sheet__footer {
-            padding: 10px 16px 14px;
+            padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
             border-top: 1px solid #e9ecef;
             background: #fff;
         }
@@ -420,8 +440,11 @@ function inyectarEstilosMarca() {
             }
         }
         .vender-sheet__confirm {
-            padding: 0.7rem 1rem;
-            font-size: 0.95rem;
+            min-height: 52px;
+            padding: 0.85rem 1.25rem;
+            font-size: 1.05rem;
+            letter-spacing: 0.03em;
+            box-shadow: 0 4px 14px rgba(25, 135, 84, 0.3);
         }
         .vender-sheet__status {
             display: flex;
@@ -443,7 +466,7 @@ function inyectarEstilosMarca() {
 
         @media (max-width: 991.98px) {
             body.vender-mobile-bar-visible .body-wrapper-inner .container-xxl {
-                padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+                padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
             }
             body.vender-sheet-open { overflow: hidden; }
         }
