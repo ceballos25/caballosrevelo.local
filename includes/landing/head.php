@@ -6,7 +6,7 @@
     <?php endif; ?>
     <title>Caballos Revelo 🐎</title>
     <meta name="description"
-        content="El dia de TU SUERTE, comienza aquí. Accede a motos, carros, casas y mucho más. Participa fácil, rápido y seguro desde cualquier lugar de Colombia.">
+        content="Pasion Equina Caballos Revelo, comienza aquí. Participa fácil, rápido y seguro desde cualquier lugar de Colombia.">
     <link rel="icon" type="image/png" href="<?= cr_site_favicon_href() ?>" data-site-favicon>
     <link rel="shortcut icon" type="image/png" href="<?= cr_site_favicon_href() ?>" data-site-favicon>
 
