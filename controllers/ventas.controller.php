@@ -260,10 +260,16 @@ class VentasController
                 /* best effort */
             }
 
-            try {
-                MailController::enviarCorreoVenta((int)$idVenta);
-            } catch (Throwable $e) {
-                self::logVenta('ERROR_CORREO', ['idVenta' => $idVenta, 'error' => $e->getMessage()]);
+            $sendSaleEmail = !array_key_exists('send_sale_email', (array)$data)
+                || filter_var($data['send_sale_email'], FILTER_VALIDATE_BOOLEAN);
+            if ($sendSaleEmail) {
+                try {
+                    MailController::enviarCorreoVenta((int)$idVenta);
+                } catch (Throwable $e) {
+                    self::logVenta('ERROR_CORREO', ['idVenta' => $idVenta, 'error' => $e->getMessage()]);
+                }
+            } else {
+                self::logVenta('CORREO_OMITIDO', ['idVenta' => $idVenta, 'motivo' => 'send_sale_email=false']);
             }
 
             $metaPurchase = self::buildMetaPurchasePayload(

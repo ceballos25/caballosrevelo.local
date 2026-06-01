@@ -35,6 +35,9 @@ class MailController {
             $mail->Username   = SMTP_USER;
             $mail->Password   = SMTP_PASS;
             $mail->Port       = SMTP_PORT;
+            // Evita bloqueos largos de SMTP que disparan timeouts HTTP en hosting compartido.
+            $mail->Timeout = 8;
+            $mail->SMTPKeepAlive = false;
 
             if (SMTP_ENCRYPTION === 'ssl') {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;

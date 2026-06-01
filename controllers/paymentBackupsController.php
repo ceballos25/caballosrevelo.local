@@ -292,6 +292,8 @@ class PaymentBackupsController
             'id_admin_sale' => 99,
             'id_payment_backup' => $backupId,
             'meta_user_data' => \App\Application\Marketing\MetaConversionsApi::userDataFromPaymentBackup($backup),
+            // En webhook no esperamos SMTP para no agotar timeout del bridge (compartido).
+            'send_sale_email' => false,
         ], $ticketIdsForSale, false);
 
         if (!empty($resVenta['success']) && !empty($resVenta['id_sale'])) {
